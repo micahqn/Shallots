@@ -86,6 +86,7 @@ class Dwayne(LoggedRobot):
         self.container = RobotContainer()
 
         SignalLogger.enable_auto_logging(False)
+        SignalLogger.stop()
         wpilib.LiveWindow.disableAllTelemetry()
 
         DataLogManager.log("Robot initialized")
