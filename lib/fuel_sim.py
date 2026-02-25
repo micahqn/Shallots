@@ -9,8 +9,9 @@ from typing import Callable, ClassVar, Optional
 
 import numpy as np
 from pykit.logger import Logger
+from wpilib import RobotBase
 from wpimath.geometry import (
-    Pose2d, Pose3d, Rotation2d, Rotation3d, Transform3d,
+    Pose2d, Pose3d, Rotation3d, Transform3d,
     Translation2d, Translation3d,
 )
 from wpimath.kinematics import ChassisSpeeds
@@ -18,6 +19,10 @@ from wpimath.units import (
     kilograms, kilograms_per_cubic_meter, meters,
     meters_per_second, meters_per_second_squared, radians, seconds,
 )
+
+if RobotBase.isSimulation():
+    import gc
+    gc.set_threshold(10000, 10, 10)
 
 # Constants
 _PERIOD: seconds = 0.02
@@ -242,7 +247,7 @@ class Hub:
             return
         pos[i, 0] += offset
         vel[i, 0] = -vel[i, 0] * _NET_COR
-        vel[i, 1] = vel[i, 1] * _NET_COR
+        vel[i, 1] *= _NET_COR
 
     @property
     def score(self) -> int:
@@ -357,7 +362,7 @@ def _xz_line_collide_np(
 
 @dataclass
 class SimIntake:
-    """Simulated intake for collecting game pieces."""
+    """Robot intake region in robot-relative coordinates."""
     x_min: float
     x_max: float
     y_min: float
@@ -365,25 +370,13 @@ class SimIntake:
     able_to_intake: Callable[[], bool] = field(default=lambda: True)
     callback: Callable[[], None] = field(default=lambda: None)
 
-    def should_intake(self, px: float, py: float, pz: float,
-                      robot_pose: Pose2d, bumper_height: float
-                      ) -> bool:
-        if not self.able_to_intake() or pz > bumper_height:
-            return False
-        rel = Pose2d(Translation2d(px, py), Rotation2d()).relativeTo(
-            robot_pose
-        ).translation()
-        result = (self.x_min <= rel.x <= self.x_max and
-                  self.y_min <= rel.y <= self.y_max)
-        if result:
-            self.callback()
-        return result
-
 
 # Grid constants
 _CELL_SIZE = _FUEL_RADIUS * 2.2
 _GRID_COLS = math.ceil(_FIELD_LENGTH / _CELL_SIZE)
 _GRID_ROWS = math.ceil(_FIELD_WIDTH / _CELL_SIZE)
+_SLEEP_THRESHOLD = 10
+_SLEEP_SPEED_SQ = 1e-6  # (m/s)²
 
 
 def _collide_trench(pos: np.ndarray, vel: np.ndarray, i: int) -> None:
@@ -430,21 +423,14 @@ class FuelSim:
         "_pos", "_vel", "_alive", "_sleep", "_n", "_cap",
         "running", "simulate_air_resistance", "subticks", "intakes",
         "_table_key", "robot_pose_supplier", "robot_speeds_supplier",
-        "robot_width", "robot_length", "bumper_height", "_robot_length_sq",
-        "_broad_r_sq", "_grid", "_grid_pool", "_grid_active_keys",
-        "_pair_checked", "_checked_pairs",
+        "robot_width", "robot_length", "bumper_height",
+        "_broad_r_sq",
+        "_grid", "_grid_pool", "_grid_active_keys",
+        "_pair_gen", "_current_gen",
     )
-
-    _SLEEP_THRESHOLD = 10
-    _SLEEP_SPEED_SQ = 1e-6  # (m/s)²
 
     def __init__(self, table_key: str = "Fuel Simulation/") -> None:
         cap = 600
-        self._grid: dict[tuple[int, int], list[int]] = {}
-        self._grid_pool: list[list[int]] = []
-        self._grid_active_keys: list[tuple[int, int]] = []
-        self._pair_checked = np.zeros((cap, cap), dtype=bool)
-        self._checked_pairs: list[tuple[int, int]] = []
         self._pos = np.zeros((cap, 3), dtype=np.float64)
         self._vel = np.zeros((cap, 3), dtype=np.float64)
         self._alive = np.zeros(cap, dtype=bool)
@@ -452,46 +438,54 @@ class FuelSim:
         self._n = 0
         self._cap = cap
 
+        self._grid: dict[tuple[int, int], list[int]] = {}
+        self._grid_pool: list[list[int]] = []
+        self._grid_active_keys: list[tuple[int, int]] = []
+        self._pair_gen = np.zeros((cap, cap), dtype=np.uint32)
+        self._current_gen: int = 0
+
         self.running: bool = False
         self.simulate_air_resistance: bool = False
         self.subticks: int = 5
         self.intakes: list[SimIntake] = []
         self._table_key = table_key
 
-        self.robot_pose_supplier: Optional[Callable[[], Pose2d]] = None
-        self.robot_speeds_supplier: Optional[
-            Callable[[], ChassisSpeeds]] = None
+        self.robot_pose_supplier: Optional[Callable] = None
+        self.robot_speeds_supplier: Optional[Callable] = None
         self.robot_width: float = 0.0
         self.robot_length: float = 0.0
-        self._robot_length_sq: float = 0.0
         self.bumper_height: float = 0.0
+        self._broad_r_sq: float = 0.0
 
     def _ensure_capacity(self, extra: int) -> None:
-        """Make sure the array doesn't explode :)"""
         needed = self._n + extra
         if needed <= self._cap:
             return
-
-        # Stop array from exploding
         new_cap = max(needed, self._cap * 2)
+
         new_pos = np.zeros((new_cap, 3), dtype=np.float64)
         new_pos[:self._cap] = self._pos
         self._pos = new_pos
+
         new_vel = np.zeros((new_cap, 3), dtype=np.float64)
         new_vel[:self._cap] = self._vel
         self._vel = new_vel
+
         new_alive = np.zeros(new_cap, dtype=bool)
         new_alive[:self._cap] = self._alive[:self._cap]
         self._alive = new_alive
+
         new_sleep = np.zeros(new_cap, dtype=np.uint8)
         new_sleep[:self._cap] = self._sleep[:self._cap]
         self._sleep = new_sleep
-        if new_cap > self._pair_checked.shape[0]:
-            self._pair_checked = np.zeros((new_cap, new_cap), dtype=bool)
 
-        self._alive[self._cap:] = False
-        self._sleep[self._cap:] = 0
+        if new_cap > self._pair_gen.shape[0]:
+            new_gen = np.zeros((new_cap, new_cap), dtype=np.uint32)
+            new_gen[:self._cap, :self._cap] = self._pair_gen
+            self._pair_gen = new_gen
+
         self._cap = new_cap
+
 
     def _add_fuel(self, px: float, py: float, pz: float,
                   vx: float = 0.0, vy: float = 0.0, vz: float = 0.0
@@ -584,8 +578,8 @@ class FuelSim:
         self.robot_speeds_supplier = field_speeds_supplier
         self.robot_width = width
         self.robot_length = length
-        self._robot_length_sq = length * length
         self.bumper_height = bumper_height
+        self._broad_r_sq = (length / 2 + width / 2 + _FUEL_RADIUS) ** 2
 
     def register_intake(
         self,
@@ -621,10 +615,11 @@ class FuelSim:
             self.step_sim()
 
     def step_sim(self) -> None:
+        dt = _PERIOD / self.subticks
         for _ in range(self.subticks):
             idx = self._active
-            self._physics_step(idx)
-            self._collision_step(idx)
+            self._physics_step(idx, dt)
+            self._collision_step(idx, dt)
             if self.robot_pose_supplier:
                 self._handle_robot_collisions(idx)
         if self.robot_pose_supplier:
@@ -656,18 +651,15 @@ class FuelSim:
         lp = launch_pose.translation()
         self._add_fuel(lp.x, lp.y, lp.z, vx, vy, vertical_vel)
 
-    def _physics_step(self, idx) -> None:
+    def _physics_step(self, idx, dt) -> None:
         """Updates physics."""
-        if self._n == 0:
-            return
-        dt = _PERIOD / self.subticks
         if len(idx) == 0:
             return
 
         pos = self._pos
         vel = self._vel
 
-        awake = idx[self._sleep[idx] < self._SLEEP_THRESHOLD]
+        awake = idx[self._sleep[idx] < _SLEEP_THRESHOLD]
         if len(awake) == 0:
             return
 
@@ -702,25 +694,24 @@ class FuelSim:
         vel[awake] = v
 
         speed_sq_all = np.einsum('ij,ij->i', vel[awake], vel[awake])
-        can_sleep = (speed_sq_all < self._SLEEP_SPEED_SQ) & (
+        can_sleep = (speed_sq_all < _SLEEP_SPEED_SQ) & (
                     pos[awake, 2] <= _FUEL_RADIUS + 0.01)
         self._sleep[awake] = np.where(
             can_sleep,
-            np.minimum(self._sleep[awake] + 1, self._SLEEP_THRESHOLD),
+            np.minimum(self._sleep[awake] + 1, _SLEEP_THRESHOLD),
             0,
         ).astype(np.uint8)
 
-    def _collision_step(self, idx) -> None:
+    def _collision_step(self, idx, dt) -> None:
         """Updates collisions."""
         if len(idx) == 0:
             return
 
         pos = self._pos
         vel = self._vel
-        dt = _PERIOD / self.subticks
 
         # Only update collisions for awake fuel.
-        for i in idx[self._sleep[idx] < self._SLEEP_THRESHOLD]:
+        for i in idx[self._sleep[idx] < _SLEEP_THRESHOLD]:
             vx, vy = vel[i, 0], vel[i, 1]
             if vx * vx + vy * vy < 1e-12:
                 continue
@@ -776,7 +767,7 @@ class FuelSim:
         active_keys = self._grid_active_keys
         pos = self._pos
 
-        # Return all used lists to the pool and clear tracking
+        # Return used cell lists to pool, then clear the grid
         for key in active_keys:
             lst = grid[key]
             lst.clear()
@@ -784,6 +775,7 @@ class FuelSim:
         active_keys.clear()
         grid.clear()
 
+        # Build spatial grid over all active balls
         for i in idx:
             col = int(pos[i, 0] / _CELL_SIZE)
             row = int(pos[i, 1] / _CELL_SIZE)
@@ -797,14 +789,14 @@ class FuelSim:
                     grid[key] = lst
                     active_keys.append(key)
 
-        # Clear only touched pairs instead of the full n×n slice
-        checked_pairs = self._checked_pairs
-        pair_checked = self._pair_checked
-        for a, b in checked_pairs:
-            pair_checked[a, b] = False
-        checked_pairs.clear()
+        self._current_gen += 1
+        if self._current_gen == 0xFFFFFFFF: # :p
+            self._pair_gen[:] = 0
+            self._current_gen = 1
+        gen = self._current_gen
+        pair_gen = self._pair_gen
 
-        awake = idx[self._sleep[idx] < self._SLEEP_THRESHOLD]
+        awake = idx[self._sleep[idx] < _SLEEP_THRESHOLD]
         for i in awake:
             col = int(pos[i, 0] / _CELL_SIZE)
             row = int(pos[i, 1] / _CELL_SIZE)
@@ -814,45 +806,39 @@ class FuelSim:
                         if i == j:
                             continue
                         a, b = (i, j) if i < j else (j, i)
-                        if pair_checked[a, b]:
+                        if pair_gen[a, b] == gen:
                             continue
-                        pair_checked[a, b] = True
-                        checked_pairs.append((a, b))
+                        pair_gen[a, b] = gen
                         dx = pos[i, 0] - pos[j, 0]
                         dy = pos[i, 1] - pos[j, 1]
                         dz = pos[i, 2] - pos[j, 2]
-                        dist_sq = dx * dx + dy * dy + dz * dz
-                        if dist_sq < _FUEL_DIAM_SQ:
-                            self._resolve_fuel_collision(a, b, dist_sq)
+                        if dx * dx + dy * dy + dz * dz < _FUEL_DIAM_SQ:
+                            self._resolve_fuel_collision(a, b)
 
-    def _resolve_fuel_collision(self, a: int, b: int, dist_sq: float) -> None:
+    def _resolve_fuel_collision(self, a: int, b: int) -> None:
         pos, vel = self._pos, self._vel
+        dx = pos[a, 0] - pos[b, 0]
+        dy = pos[a, 1] - pos[b, 1]
+        dz = pos[a, 2] - pos[b, 2]
+        dist_sq = dx * dx + dy * dy + dz * dz
         dist = math.sqrt(dist_sq) if dist_sq > 0 else 1.0
-        if dist == 0:
-            nx, ny, nz = 1.0, 0.0, 0.0
+        if dist > 0:
+            nx, ny, nz = dx / dist, dy / dist, dz / dist
         else:
-            nx = (pos[a, 0] - pos[b, 0]) / dist
-            ny = (pos[a, 1] - pos[b, 1]) / dist
-            nz = (pos[a, 2] - pos[b, 2]) / dist
+            nx, ny, nz = 1.0, 0.0, 0.0
 
         impulse = 0.5 * _FUEL_COR1 * (
-                (vel[b, 0] - vel[a, 0]) * nx +
-                (vel[b, 1] - vel[a, 1]) * ny +
-                (vel[b, 2] - vel[a, 2]) * nz
+            (vel[b, 0] - vel[a, 0]) * nx +
+            (vel[b, 1] - vel[a, 1]) * ny +
+            (vel[b, 2] - vel[a, 2]) * nz
         )
         overlap = (_FUEL_DIAM - dist) * 0.5
-        pos[a, 0] += nx * overlap
-        pos[b, 0] -= nx * overlap
-        pos[a, 1] += ny * overlap
-        pos[b, 1] -= ny * overlap
-        pos[a, 2] += nz * overlap
-        pos[b, 2] -= nz * overlap
-        vel[a, 0] += impulse * nx
-        vel[b, 0] -= impulse * nx
-        vel[a, 1] += impulse * ny
-        vel[b, 1] -= impulse * ny
-        vel[a, 2] += impulse * nz
-        vel[b, 2] -= impulse * nz
+        pos[a, 0] += nx * overlap;  pos[b, 0] -= nx * overlap
+        pos[a, 1] += ny * overlap;  pos[b, 1] -= ny * overlap
+        pos[a, 2] += nz * overlap;  pos[b, 2] -= nz * overlap
+        vel[a, 0] += impulse * nx;  vel[b, 0] -= impulse * nx
+        vel[a, 1] += impulse * ny;  vel[b, 1] -= impulse * ny
+        vel[a, 2] += impulse * nz;  vel[b, 2] -= impulse * nz
         self._sleep[a] = 0
         self._sleep[b] = 0
 
@@ -874,7 +860,6 @@ class FuelSim:
         sin_r = math.sin(angle)
 
         # cull anything outside a circle that fully contains the robot
-        broad_r_sq = (half_l + half_w + _FUEL_RADIUS) ** 2
         for i in idx:
             pz = pos[i, 2]
             if pz > bh:
@@ -884,7 +869,7 @@ class FuelSim:
             ddy = pos[i, 1] - rty
 
             # Broad phase circle check — cheap, culls most balls
-            if ddx * ddx + ddy * ddy > broad_r_sq:
+            if ddx * ddx + ddy * ddy > self._broad_r_sq:
                 continue
 
             # Transform to robot frame using transpose of rotation matrix
