@@ -129,6 +129,16 @@ _FIELD_XZ_LINES: tuple[tuple[Translation3d, Translation3d], ...] = (
         _TRENCH_HEIGHT + _TRENCH_BAR_HEIGHT
     )))
 
+# Precompute line bounds for spatial filtering
+_LINE_BOUNDS: list[tuple[float, float, float, float]] = []
+for line_start, line_end in _FIELD_XZ_LINES:
+    _LINE_BOUNDS.append((
+        min(line_start.x, line_end.x),
+        max(line_start.x, line_end.x),
+        min(line_start.y, line_end.y),
+        max(line_start.y, line_end.y)
+    ))
+
 
 @dataclass
 class Hub:
@@ -140,7 +150,7 @@ class Hub:
     _score: int = field(default=0, init=False, repr=False)
 
     _ENTRY_HEIGHT: ClassVar[float] = 1.83
-    _ENTRY_RADIUS: ClassVar[float] = 0.56
+    ENTRY_RADIUS: ClassVar[float] = 0.56
     _SIDE: ClassVar[float] = 1.2
     _NET_HEIGHT_MAX: ClassVar[float] = 3.057
     _NET_HEIGHT_MIN: ClassVar[float] = 1.5
@@ -158,7 +168,7 @@ class Hub:
         """Check if fuel is withing entry bounds."""
         return fuel.pos.toTranslation2d().distance(
             self.center
-        ) <= self._ENTRY_RADIUS and fuel.pos.z <= self._ENTRY_HEIGHT < (
+        ) <= self.ENTRY_RADIUS and fuel.pos.z <= self._ENTRY_HEIGHT < (
                 fuel.pos - (fuel.vel * (_PERIOD / subticks))).z
 
     def _get_dispersal_velocity(self) -> Translation3d:
@@ -246,22 +256,24 @@ class Fuel:
         px += vx * dt
         py += vy * dt
         pz += vz * dt
+
+        vel_sq = vx * vx + vy * vy
+        speed_sq = vel_sq + vz * vz
+
         if pz > _FUEL_RADIUS:
             fg_z = _GRAVITY * _FUEL_MASS
             drag_z = 0.0
 
-            if simulate_air_resistance:
-                speed2 = vx * vx + vy * vy + vz * vz
-                if speed2 > 1e-12:
-                    speed = speed2 ** 0.5
-                    drag_x = -_DRAG_FORCE_FACTOR * speed * vx
-                    drag_y = -_DRAG_FORCE_FACTOR * speed * vy
-                    drag_z = -_DRAG_FORCE_FACTOR * speed * vz
+            if simulate_air_resistance and speed_sq > 1e-12:
+                speed = speed_sq ** 0.5
+                drag_x = -_DRAG_FORCE_FACTOR * speed * vx
+                drag_y = -_DRAG_FORCE_FACTOR * speed * vy
+                drag_z = -_DRAG_FORCE_FACTOR * speed * vz
 
-                    ax = drag_x / _FUEL_MASS
-                    ay = drag_y / _FUEL_MASS
-                    vx += ax * dt
-                    vy += ay * dt
+                ax = drag_x / _FUEL_MASS
+                ay = drag_y / _FUEL_MASS
+                vx += ax * dt
+                vy += ay * dt
 
             az = (fg_z + drag_z) / _FUEL_MASS
             vz += az * dt
@@ -276,27 +288,28 @@ class Fuel:
         self.pos = Translation3d(px, py, pz)
         self.vel = Translation3d(vx, vy, vz)
 
-        # Collision handling
-        if vx * vx + vy * vy > 1e-12:
+        # Skip collision checks if stationary
+        if vel_sq > 1e-12:
             self._handle_field_collisions(subticks)
 
     def _handle_xz_line_collision(self,
-                                  line_start: Translation3d,
-                                  line_end: Translation3d
+                                  start: Translation3d,
+                                  end: Translation3d
                                   ) -> None:
-        """Handle a lotta collisions."""
-        if self.pos.y < line_start.y or self.pos.y > line_end.y:
+        """Handle a lotta collisions"""
+        if self.pos.y < start.y or self.pos.y > end.y:
             return
         # Convert into 2D
-        start2d = Translation2d(line_start.x, line_start.z)
-        end2d = Translation2d(line_end.x, line_end.z)
+        start2d = Translation2d(start.x, start.z)
+        end2d = Translation2d(end.x, end.z)
         pos2d = Translation2d(self.pos.x, self.pos.z)
         line_vec = end2d - start2d
 
         # Get the closest point on the line
+        line_vec_norm_sq = line_vec.squaredNorm()
         projected = start2d + (line_vec * (pos2d - start2d).dot(
             line_vec
-        ) / line_vec.squaredNorm())
+        ) / line_vec_norm_sq)
 
         if projected.distance(start2d) + projected.distance(
                 end2d
@@ -305,12 +318,14 @@ class Fuel:
         dist = pos2d.distance(projected)
         if dist > _FUEL_RADIUS:
             return  # not intersecting line
+
         # Back into 3D
+        line_norm = line_vec.norm()
         normal = Translation3d(
             -line_vec.y,
             0,
             line_vec.x
-        ) / line_vec.norm()
+        ) / line_norm
 
         # Apply collision response
         self.pos += normal * (_FUEL_RADIUS - dist)
@@ -323,8 +338,15 @@ class Fuel:
         # floor and bumps
         if self.vel.norm() < 1e-6:
             return  # No checks if we aren't moving
-        for _, line in enumerate(_FIELD_XZ_LINES):
-            self._handle_xz_line_collision(line[0], line[1])
+
+        # Only check lines near fuel position
+        px, py = self.pos.x, self.pos.y
+        for i, (min_x, max_x, min_y, max_y) in enumerate(_LINE_BOUNDS):
+            # Expand bounds by fuel radius
+            if (px + _FUEL_RADIUS >= min_x and px - _FUEL_RADIUS <= max_x and
+                py + _FUEL_RADIUS >= min_y and py - _FUEL_RADIUS <= max_y):
+                line = _FIELD_XZ_LINES[i]
+                self._handle_xz_line_collision(line[0], line[1])
 
         # edges
         if self.pos.x < _FUEL_RADIUS and self.vel.x < 0:
@@ -354,7 +376,12 @@ class Fuel:
         self._handle_trench_collisions()
 
     def _handle_hub_collisions(self, hub: "Hub", subticks: int) -> None:
-        """Lots of collision checks..."""
+        """Lots of collision checks. OPTIMIZED: early distance check."""
+        # OPTIMIZATION: Only do detailed checks if fuel is close to hub
+        hub_dist = self.pos.toTranslation2d().distance(hub.center)
+        if hub_dist > hub.ENTRY_RADIUS + 1.0:
+            return  # Too far away
+
         hub.handle_hub_interaction(self, subticks)
         hub.fuel_collide_side(self)
 
@@ -536,6 +563,7 @@ def _handle_fuel_collision(a: Fuel, b: Fuel) -> None:
 _CELL_SIZE = 0.25
 _GRID_COLS = math.ceil(_FIELD_LENGTH / _CELL_SIZE)
 _GRID_ROWS = math.ceil(_FIELD_WIDTH / _CELL_SIZE)
+_FUEL_DIAM_SQ = (_FUEL_RADIUS * 2) ** 2
 
 
 # pylint: disable=too-many-instance-attributes
@@ -625,7 +653,7 @@ class FuelSim:
                 )
 
     def spawn_less_starting_fuel(self) -> None:
-        """Spawns less fuel in the neutral zone for performance’s sake."""
+        """Spawns less fuel in the neutral zone for performance's sake."""
         # Center fuel
         center = Translation3d(
             _FIELD_LENGTH / 2,
@@ -850,10 +878,14 @@ class FuelSim:
                 for j in range(row - 1, row + 2):
                     if 0 <= i < _GRID_COLS and 0 <= j < _GRID_ROWS:
                         for other in self._grid.get((i, j), []):
-                            if (fuel is not other and fuel.pos.distance(
-                                    other.pos
-                            ) < _FUEL_RADIUS * 2 and id(fuel) < id(other)):
-                                _handle_fuel_collision(fuel, other)
+                            if fuel is not other and id(fuel) < id(other):
+                                dist_sq = (
+                                    (fuel.pos.x - other.pos.x) ** 2 +
+                                    (fuel.pos.y - other.pos.y) ** 2 +
+                                    (fuel.pos.z - other.pos.z) ** 2
+                                )
+                                if dist_sq < _FUEL_DIAM_SQ:
+                                    _handle_fuel_collision(fuel, other)
 
     def register_intake(self,
                         x_min: float,
