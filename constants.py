@@ -134,7 +134,7 @@ class Constants:
         MOI = .455
         MAX_ROTATIONS = 0.865967
         MAX_MANUAL_VELOCITY = 20  # rad/sec
-        SETPOINT_TOLERANCE = 0.067
+        SETPOINT_TOLERANCE = 0.167
         MM_VELOCITY = 1
         MM_ACCELERATION = 20
         # Only switch to other side of center when goal is at least this many degrees past middle

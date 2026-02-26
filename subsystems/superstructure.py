@@ -10,6 +10,8 @@ from subsystems.launcher import LauncherSubsystem
 from subsystems.hood import HoodSubsystem
 from subsystems.turret import TurretSubsystem
 
+from pykit.logger import Logger
+
 from constants import Constants
 
 
@@ -117,16 +119,20 @@ class Superstructure(Subsystem):
         self._goal_state = self.Goal.DEFAULT
         self.set_goal_command(self._goal_state)
 
-        # table = NetworkTableInstance.getDefault().getTable("Superstructure")
-        # self._current_goal_pub = table.getStringTopic("Current Goal").publish()
-        # self._component_poses = table.getStructArrayTopic("Components", Pose3d).publish()
+        self._turret_check = False
+        self._hood_check = False
+        self._flywheel_check = False
+
 
     def periodic(self):
         if DriverStation.isDisabled():
             return
-
+        
+        self._turret_check = (abs(self.turret.inputs.turret_setpoint - self.turret.inputs.turret_position) < Constants.TurretConstants.SETPOINT_TOLERANCE)
+        self._hood_check = abs(self.hood.inputs.hood_setpoint - self.hood.inputs.hood_position) < Constants.HoodConstants.SETPOINT_TOLERANCE
+        self._flywheel_check = abs(self.launcher.desired_motorRPS - self.launcher.inputs.motorVelocity) < Constants.LauncherConstants.SETPOINT_TOLERANCE
+        
         match self._goal_state:
-
             case self.Goal.DEFAULT:
                 if self.feeder.is_locked:
                     self.feeder.unlock()
@@ -138,36 +144,37 @@ class Superstructure(Subsystem):
                     self.feeder.set_desired_state(FeederSubsystem.SubsystemState.INWARD)
 
             case self.Goal.LAUNCH: 
-                turret_check = abs(self.turret.inputs.turret_setpoint - self.turret.inputs.turret_position) < Constants.TurretConstants.SETPOINT_TOLERANCE
-                hood_check = abs(self.hood.inputs.hood_setpoint - self.hood.inputs.hood_position) < Constants.HoodConstants.SETPOINT_TOLERANCE
-                flywheel_check = abs(self.launcher.desired_motorRPS - self.launcher.inputs.motorVelocity) < Constants.LauncherConstants.SETPOINT_TOLERANCE
-
-                if (turret_check and hood_check and flywheel_check) and self.feeder.is_locked:
+                if (self._turret_check and self._hood_check and self._flywheel_check) and self.feeder.is_locked:
                     self.feeder.unlock()
                     self.feeder.set_desired_state(FeederSubsystem.SubsystemState.INWARD)
 
                 elif not self.feeder.is_locked:
                     self.feeder.set_desired_state(FeederSubsystem.SubsystemState.STOP)
                     self.feeder.lock()
+
+        Logger.recordOutput("Superstructure/Goal State", self._goal_state.name)
+        Logger.recordOutput("Superstructure/Turret Check", self._turret_check)
+        Logger.recordOutput("Superstructure/Hood Check", self._hood_check)
+        Logger.recordOutput("Superstructure/Flywheel Check", self._flywheel_check)
             
 
     def _set_goal(self, goal: Goal) -> None:
 
         intake_state, feeder_state, launcher_state, hood_state, turret_state, superstructure_state = self._goal_to_states.get(goal, (None, None, None, None, None, False))
 
-        if not (self.intake is None or intake_state is None):
+        if not intake_state is None:
             self.intake.set_desired_state(intake_state)
 
-        if not (self.feeder is None or feeder_state is None):
+        if not feeder_state is None:
             self.feeder.set_desired_state(feeder_state)
 
-        if not (self.launcher is None or launcher_state is None):
+        if not launcher_state is None:
             self.launcher.set_desired_state(launcher_state)
 
-        if not (self.hood is None or hood_state is None):
+        if not hood_state is None:
             self.hood.set_desired_state(hood_state)
 
-        if not (self.turret is None or turret_state is None):
+        if not turret_state is None:
             self.turret.set_desired_state(turret_state)
 
         if superstructure_state:

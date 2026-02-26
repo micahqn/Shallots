@@ -197,7 +197,7 @@ class RobotContainer:
                 
 
         self.superstructure = Superstructure(
-            self.intake, self.feeder, self.launcher, self.hood
+            self.intake, self.feeder, self.launcher, self.hood, self.turret
         )
 
         self._setup_swerve_requests()
@@ -321,27 +321,22 @@ class RobotContainer:
             print("Launcher subsystem not available on this robot, unable to bind launcher buttons")
         
         if self.turret is not None and self.hood is not None:
+
             self._function_controller.y().onTrue(
-                InstantCommand(lambda: self.turret.set_desired_state(self.turret.SubsystemState.HUB)).alongWith(
-                    InstantCommand(lambda: self.hood.set_desired_state(self.hood.SubsystemState.AIMBOT))
-                )
+                self.superstructure.set_goal_command(Superstructure.Goal.AIMHUB)
             )
 
             self._function_controller.x().onTrue(
-                InstantCommand(lambda: self.turret.set_desired_state(self.turret.SubsystemState.DEPOT)).alongWith(
-                    InstantCommand(lambda: self.hood.set_desired_state(self.hood.SubsystemState.PASS))
-                )
+                self.superstructure.set_goal_command(Superstructure.Goal.AIMDEPOT)
             )
             
             self._function_controller.b().onTrue(
-                InstantCommand(lambda: self.turret.set_desired_state(self.turret.SubsystemState.OUTPOST)).alongWith(
-                    InstantCommand(lambda: self.hood.set_desired_state(self.hood.SubsystemState.PASS))
-                )
+                self.superstructure.set_goal_command(Superstructure.Goal.AIMOUTPOST)
             )
 
             self._function_controller.a().onTrue(
-                self.superstructure.set_goal_command(Superstructure.Goal.DEFAULT)
-            ).onFalse(self.superstructure.set_goal_command(Superstructure.Goal.DEFAULT))
+                self.superstructure.set_goal_command(Superstructure.Goal.LAUNCH)
+                ).onFalse(self.superstructure.set_goal_command(Superstructure.Goal.DEFAULT))
 
             self._function_controller.back().onTrue(
                 InstantCommand(lambda: self.turret.set_desired_state(self.turret.SubsystemState.MANUAL)).alongWith(
@@ -353,7 +348,7 @@ class RobotContainer:
             self._function_controller.back().whileTrue(
                 InstantCommand(lambda: self.turret.rotate_manually(self._function_controller.getRightX())).alongWith(
                     InstantCommand(lambda: self.hood.rotate_manually(self._function_controller.getRightY()))
-                    )
+                )
             )
            
         else:
