@@ -88,7 +88,7 @@ class Constants:
         FLYWHEEL_RADIUS = None
         FEED_FORWARD = None
         MAX_RPS = None
-        SETPOINT_TOLERANCE = 0.67
+        SETPOINT_TOLERANCE = 3
 
     class FeederConstants:
         GEAR_RATIO = None

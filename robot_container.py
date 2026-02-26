@@ -333,12 +333,8 @@ class RobotContainer:
             self.drivetrain.runOnce(
                 lambda: self.drivetrain.seed_field_centric()))
 
-        if self.feeder is not None:
-            Trigger(lambda: self._function_controller.getRightTriggerAxis() > 0.75).whileTrue(InstantCommand(lambda: self.feeder.set_desired_state(self.feeder.SubsystemState.INWARD))).onFalse(InstantCommand(lambda: self.feeder.set_desired_state(self.feeder.SubsystemState.STOP)))
-        else:
-            print("Feeder subsystem not available on this robot, unable to bind feeder buttons")
         if self.launcher is not None:
-            Trigger(lambda: self._function_controller.getLeftTriggerAxis() > 0.75).whileTrue(InstantCommand(lambda: self.launcher.set_desired_state(self.launcher.SubsystemState.SCORE))).onFalse(InstantCommand(lambda: self.launcher.set_desired_state(self.launcher.SubsystemState.IDLE)))
+            Trigger(lambda: self._function_controller.getRightTriggerAxis() > 0.75).whileTrue(self.superstructure.set_goal_command(Superstructure.Goal.LAUNCH)).onFalse(self.superstructure.set_goal_command(Superstructure.Goal.DEFAULT))
         else:
             print("Launcher subsystem not available on this robot, unable to bind launcher buttons")
 
@@ -357,8 +353,8 @@ class RobotContainer:
             )
 
             self._function_controller.a().onTrue(
-                self.superstructure.set_goal_command(Superstructure.Goal.LAUNCH)
-                ).onFalse(self.superstructure.set_goal_command(Superstructure.Goal.DEFAULT))
+                self.superstructure.set_goal_command(Superstructure.Goal.DEFAULT)
+            )
 
             self._function_controller.back().onTrue(
                 InstantCommand(lambda: self.turret.set_desired_state(self.turret.SubsystemState.MANUAL)).alongWith(
