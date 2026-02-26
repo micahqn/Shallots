@@ -12,7 +12,7 @@ from phoenix6.configs import TalonFXConfiguration
 from phoenix6.configs.config_groups import NeutralModeValue, MotorOutputConfigs, FeedbackConfigs
 from pykit.networktables.loggeddashboardchooser import LoggedDashboardChooser
 from wpilib import Field2d, SmartDashboard, XboxController, getDeployDirectory, RobotBase
-from wpimath.geometry import Rotation2d
+from wpimath.geometry import Rotation2d, Pose3d
 from wpimath.kinematics import ChassisSpeeds
 from wpimath.units import rotationsToRadians, inchesToMeters
 
@@ -426,3 +426,7 @@ class RobotContainer:
     def has_hood(self) -> bool:
         """Check if hood subsystem exists on this robot."""
         return self.hood is not None
+
+    def get_component_poses(self) -> list[Pose3d]:
+        turret = self.turret.get_component_pose()
+        return [turret, self.hood.get_component_pose(turret), self.climber.get_component_pose()]

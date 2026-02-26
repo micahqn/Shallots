@@ -100,6 +100,8 @@ class Dwayne(LoggedRobot):
         if self.container.drivetrain is not None:
             self.container._field.setRobotPose(self.container.drivetrain.get_state().pose)
 
+        Logger.recordOutput("Components", self.container.get_component_poses())
+
     def _simulationPeriodic(self) -> None:
         self.container.fuel_sim.update_sim()
 
