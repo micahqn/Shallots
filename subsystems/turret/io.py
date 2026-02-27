@@ -196,7 +196,7 @@ class TurretIOSim(TurretIO):
 
         inputs.turret_connected = True
         inputs.turret_position = self.turretSim.getAngularPosition()
-        inputs.turret_velocity = self.turretSim.getAngularAcceleration()
+        inputs.turret_velocity = self.turretSim.getAngularVelocity()
         inputs.turret_applied_volts = self.applied_volts
         inputs.turret_current = abs(self.turretSim.getCurrentDraw())
         inputs.turret_temperature = 25.0  # Room temperature
