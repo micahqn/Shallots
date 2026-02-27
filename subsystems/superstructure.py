@@ -123,6 +123,7 @@ class Superstructure(Subsystem):
         self._hood_check = False
         self._flywheel_check = False
 
+        self._checks_override = False
 
     def periodic(self):
         if DriverStation.isDisabled():
@@ -144,11 +145,11 @@ class Superstructure(Subsystem):
                     self.feeder.set_desired_state(FeederSubsystem.SubsystemState.INWARD)
 
             case self.Goal.LAUNCH: 
-                if (self._turret_check and self._hood_check and self._flywheel_check) and self.feeder.is_locked:
+                if (self._turret_check and self._hood_check and self._flywheel_check) or self._checks_override:
                     self.feeder.unlock()
                     self.feeder.set_desired_state(FeederSubsystem.SubsystemState.INWARD)
 
-                elif not self.feeder.is_locked:
+                else:
                     self.feeder.set_desired_state(FeederSubsystem.SubsystemState.STOP)
                     self.feeder.lock()
 
@@ -156,6 +157,7 @@ class Superstructure(Subsystem):
         Logger.recordOutput("Superstructure/Turret Check", self._turret_check)
         Logger.recordOutput("Superstructure/Hood Check", self._hood_check)
         Logger.recordOutput("Superstructure/Flywheel Check", self._flywheel_check)
+        Logger.recordOutput("Superstructure/Overridden", self._checks_override)
             
 
     def _set_goal(self, goal: Goal) -> None:
@@ -180,6 +182,9 @@ class Superstructure(Subsystem):
         if superstructure_state:
             self._goal_state = goal
 
+    def _set_override(self) -> None:
+        self._checks_override = not self._checks_override
+
     def set_goal_command(self, goal: Goal) -> Command:
         """
         Return a command that sets the superstructure goal to whatever the desired goal is.
@@ -190,3 +195,6 @@ class Superstructure(Subsystem):
         :rtype:      Command
         """
         return cmd.runOnce(lambda: self._set_goal(goal), self)
+    
+    def override_checks(self) -> Command:
+        return cmd.runOnce(lambda: self._set_override(), self)

@@ -237,6 +237,7 @@ class RobotContainer:
         # Register NamedCommands
         NamedCommands.registerCommand("Default", self.superstructure.set_goal_command(Superstructure.Goal.DEFAULT))
         NamedCommands.registerCommand("Launch", self.superstructure.set_goal_command(Superstructure.Goal.LAUNCH))
+        NamedCommands.registerCommand("Intake", self.superstructure.set_goal_command(Superstructure.Goal.INTAKE))
         NamedCommands.registerCommand("Aim to Depot", self.superstructure.set_goal_command(Superstructure.Goal.AIMDEPOT))
         NamedCommands.registerCommand("Aim to Outpost", self.superstructure.set_goal_command(Superstructure.Goal.AIMOUTPOST))
         NamedCommands.registerCommand("Aim to Hub", self.superstructure.set_goal_command(Superstructure.Goal.AIMHUB))
@@ -335,6 +336,8 @@ class RobotContainer:
 
         if self.launcher is not None:
             Trigger(lambda: self._function_controller.getRightTriggerAxis() > 0.75).whileTrue(self.superstructure.set_goal_command(Superstructure.Goal.LAUNCH)).onFalse(self.superstructure.set_goal_command(Superstructure.Goal.DEFAULT))
+            Trigger(lambda: self._function_controller.getLeftTriggerAxis() > 0.75).whileTrue(self.launcher.set_desired_state(self.launcher.SubsystemState.SCORE)).onFalse(self.launcher.set_desired_state(self.launcher.SubsystemState.IDLE))
+
         else:
             print("Launcher subsystem not available on this robot, unable to bind launcher buttons")
 
@@ -362,12 +365,13 @@ class RobotContainer:
                 )
             )
 
-
             self._function_controller.back().whileTrue(
                 InstantCommand(lambda: self.turret.rotate_manually(self._function_controller.getRightX())).alongWith(
                     InstantCommand(lambda: self.hood.rotate_manually(self._function_controller.getRightY()))
                 )
             )
+
+            self._function_controller.start().onTrue(self.superstructure.override_checks())
 
         else:
             print("Turret or hood subsystem not available on this robot, unable to bind turret buttons")
