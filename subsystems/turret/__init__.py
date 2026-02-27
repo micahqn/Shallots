@@ -177,4 +177,4 @@ class TurretSubsystem(StateSubsystem):
 
     def get_component_pose(self) -> Pose3d:
         """Gets the articulated component pose for AdvantageScope."""
-        return Pose3d(-0.1524, 0, 0, Rotation3d(0, 0, self._inputs.turret_position))
+        return Pose3d(-0.1524, 0, 0, Rotation3d(0, 0, self.inputs.turret_position))

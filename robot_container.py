@@ -424,4 +424,4 @@ class RobotContainer:
 
     def get_component_poses(self) -> list[Pose3d]:
         turret = self.turret.get_component_pose()
-        return [turret, self.hood.get_component_pose(turret), self.climber.get_component_pose()]
+        return [turret, self.hood.get_component_pose(turret)]#self.climber.get_component_pose() (crashed stuff)
