@@ -134,10 +134,10 @@ class TurretIOTalonFX(TurretIO):
         self.target_position = rotations
         if rotations > Constants.TurretConstants.MAX_ROTATIONS + self._zero_position:
             rotations = Constants.TurretConstants.MAX_ROTATIONS + self._zero_position
-            print("Turret position is too high, setting to max")
+            #print("Turret position is too high, setting to max")
         elif rotations < self._zero_position:
             rotations = self._zero_position
-            print("Turret position is too low, setting to zero")
+            #print("Turret position is too low, setting to zero")
         #self.position_request.position(rotations) #PositionVoltage(rotations)
         self.turret_motor.set_control(self.position_request.with_position(rotations))
 
@@ -149,10 +149,10 @@ class TurretIOTalonFX(TurretIO):
         """
         if velocity > 0 and self.position.value_as_double >= Constants.TurretConstants.MAX_ROTATIONS + self._zero_position:
             velocity = 0
-            print("Turret position is too high, setting to zero")
+            #print("Turret position is too high, setting to zero")
         elif velocity < 0 and self.position.value_as_double <= self._zero_position:
             velocity = 0
-            print("Turret position is too low, setting to zero")
+            #print("Turret position is too low, setting to zero")
         self.velocity_request = VelocityVoltage(radiansToRotations(velocity))
         self.turret_motor.set_control(self.velocity_request)
 

@@ -3,40 +3,47 @@
   "waypoints": [
     {
       "anchor": {
-        "x": 3.5929397590361445,
-        "y": 4.035
+        "x": 3.622028469750891,
+        "y": 2.7707947805456707
       },
       "prevControl": null,
       "nextControl": {
-        "x": 3.331092732962296,
-        "y": 4.403563564044838
+        "x": 3.256215895610914,
+        "y": 2.9429418742585995
       },
       "isLocked": false,
       "linkedName": null
     },
     {
       "anchor": {
-        "x": 1.23255421686747,
-        "y": 5.969204819277109
+        "x": 2.0942230130486363,
+        "y": 3.7176037959667845
       },
       "prevControl": {
-        "x": 1.5636342214017305,
-        "y": 5.956341540328083
+        "x": 2.4815539739027295,
+        "y": 3.5777342823250295
       },
       "nextControl": null,
       "isLocked": false,
-      "linkedName": "Circle 6 W1"
+      "linkedName": null
     }
   ],
   "rotationTargets": [],
   "constraintZones": [],
   "pointTowardsZones": [],
-  "eventMarkers": [],
+  "eventMarkers": [
+    {
+      "name": "Aim to Hub",
+      "waypointRelativePos": 0,
+      "endWaypointRelativePos": 0.4688239936858704,
+      "command": null
+    }
+  ],
   "globalConstraints": {
-    "maxVelocity": 1.75,
-    "maxAcceleration": 4.0,
+    "maxVelocity": 1.0,
+    "maxAcceleration": 6.0,
     "maxAngularVelocity": 720.0,
-    "maxAngularAcceleration": 900.0,
+    "maxAngularAcceleration": 1200.0,
     "nominalVoltage": 12.0,
     "unlimited": false
   },
@@ -45,10 +52,10 @@
     "rotation": 180.0
   },
   "reversed": false,
-  "folder": "Circle 6",
+  "folder": null,
   "idealStartingState": {
     "velocity": 0,
-    "rotation": -178.18347912592756
+    "rotation": 180.0
   },
-  "useDefaultConstraints": true
+  "useDefaultConstraints": false
 }
