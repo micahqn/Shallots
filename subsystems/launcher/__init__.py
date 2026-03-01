@@ -1,18 +1,16 @@
-from enum import auto, Enum
+from enum import IntEnum, auto
+from math import pi
+from typing import Callable, Final
 
 from pathplannerlib.auto import FlippingUtil, AutoBuilder
-from pykit.autolog import autologgable_output
 from pykit.logger import Logger
 from wpilib import Alert
-from typing import Callable, Final
-from subsystems import StateSubsystem
-from subsystems.launcher.io import LauncherIO, LauncherIOTalonFX, LauncherIOSim
 from wpimath.geometry import Pose2d
-from commands2.button import Trigger
-from commands2 import InstantCommand
-from math import pi
 
 from constants import Constants
+from subsystems import StateSubsystem
+from subsystems.launcher.io import LauncherIO, LauncherIOTalonFX, LauncherIOSim
+
 LauncherConstants = Constants.LauncherConstants
 GeneralConstants = Constants.GeneralConstants
 
@@ -36,7 +34,7 @@ class LauncherSubsystem(StateSubsystem):
     The LauncherSubsystem is responsible for controlling the end effector's compliant wheels.
     """
 
-    class SubsystemState(Enum):
+    class SubsystemState(IntEnum):
         IDLE = auto()
         SCORE = auto()
         PASS = auto()
@@ -93,7 +91,7 @@ class LauncherSubsystem(StateSubsystem):
             base_velocity = self._state_configs[self.SubsystemState.SCORE]
             if self.distance > Constants.HoodConstants.MAX_DISTANCE_FOR_SLOW_LAUNCH:
                 self.desired_motorRPS = base_velocity + 10.0
-            elif self.distance <= Constants.HoodConstants.MAX_DISTANCE_FOR_MEDIUM_LAUNCH and self.distance > Constants.HoodConstants.MAX_DISTANCE_FOR_SLOW_LAUNCH:
+            elif Constants.HoodConstants.MAX_DISTANCE_FOR_MEDIUM_LAUNCH >= self.distance > Constants.HoodConstants.MAX_DISTANCE_FOR_SLOW_LAUNCH:
                 self.desired_motorRPS = base_velocity + 5.0
             else:
                 self.desired_motorRPS = base_velocity

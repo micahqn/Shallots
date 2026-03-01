@@ -18,7 +18,7 @@ from phoenix6.phoenix_native import (SwerveDriveState_t, SwerveModuleState_t,
 from phoenix6.swerve import SwerveModuleState
 from phoenix6.swerve.requests import ApplyRobotSpeeds
 from pykit.logger import Logger
-from wpilib import DriverStation, Notifier, RobotController
+from wpilib import DriverStation, Notifier, RobotController, RobotBase
 from wpilib.sysid import SysIdRoutineLog
 from wpimath.geometry import Pose2d, Rotation2d
 from wpimath.kinematics import ChassisSpeeds
@@ -60,7 +60,7 @@ class SwerveSubsystem(Subsystem, swerve.SwerveDrivetrain):
             self.pose = Pose2d(
                 state.pose.x,
                 state.pose.y,
-                Rotation2d(state.pose.theta)
+                state.pose.theta
             )
             self.speeds = ChassisSpeeds(
                 state.speeds.vx,
@@ -337,7 +337,6 @@ class SwerveSubsystem(Subsystem, swerve.SwerveDrivetrain):
         self._swerve_state._update_from_native(self._c_state)
         Logger.recordOutput("Drive/State", self._swerve_state)
 
-        # Mutate pre-allocated lists, no allocation
         for ms, mt, cs, ct in zip(
                 module_states,
                 module_targets,

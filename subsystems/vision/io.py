@@ -45,7 +45,7 @@ class VisionIO(ABC):
     """Base class for VisionIO."""
 
     @autolog
-    @dataclass
+    @dataclass(slots=True)
     class VisionIOInputs:
         """Inputs for the VisionSubsystem."""
         name: str = "Unnamed Camera"

@@ -1,4 +1,4 @@
-from enum import auto, Enum
+from enum import auto, Enum, IntEnum
 from typing import Optional
 
 from commands2 import Command, Subsystem, cmd
@@ -20,7 +20,7 @@ class Superstructure(Subsystem):
     The Superstructure is in charge of handling all subsystems to ensure no conflicts between them.
     """
 
-    class Goal(Enum):
+    class Goal(IntEnum):
         DEFAULT     = auto()  # Default goal
         INTAKE      = auto()  # Intaking fuel from the floor.  This goal may be removed
         LAUNCH      = auto()  # Scoring fuel into the hub
