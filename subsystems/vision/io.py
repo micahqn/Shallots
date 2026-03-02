@@ -97,6 +97,8 @@ class VisionIOLimelight(VisionIO):
         self._heartbeat = Timer()
         self._heartbeat.start()
 
+        self._last_rot = Rotation2d()
+
     def update_inputs(self, inputs: VisionIO.VisionIOInputs) -> None:
         """Update subsystem inputs."""
         inputs.name = self.name
@@ -108,13 +110,24 @@ class VisionIOLimelight(VisionIO):
             latency_ms = (RobotController.getFPGATime() - self.latency.getLastChange()) / 1000
             inputs.connected = latency_ms < 250
 
-        # Update orientation
+        rot = self.rotation_supplier()
         self.orientation_publisher.set(
-            [self.rotation_supplier().degrees(), 0, 0, 0, 0, 0]
+            [rot.degrees(), 0, 0, 0, 0, 0]
         )
 
         tag_ids = []
         pose_observations = []
+
+        # Update orientation
+        if abs((self._last_rot - rot).degrees()) > 7.2:
+            # If we're rotating over 360 degrees per second,
+            # don't read estimates.
+            inputs.observations = pose_observations
+            inputs.tag_ids = tag_ids
+            self._last_rot = rot
+            return
+
+        self._last_rot = rot
 
         for sample in self.megatag1.readQueue():
             val = sample.value
