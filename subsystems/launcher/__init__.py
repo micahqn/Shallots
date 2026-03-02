@@ -41,9 +41,9 @@ class LauncherSubsystem(StateSubsystem):
 
     _state_configs: dict[SubsystemState, float] = {
         # Meters per second
-        SubsystemState.IDLE: 0, #velocityToWheelRPS(5.0),
-        SubsystemState.SCORE: 30,#velocityToWheelRPS(12.26),
-        SubsystemState.PASS: 50 #velocityToWheelRPS(10.0),
+        SubsystemState.IDLE: 0.0, #velocityToWheelRPS(5.0),
+        SubsystemState.SCORE: 30.0,#velocityToWheelRPS(12.26),
+        SubsystemState.PASS: 50.0 #velocityToWheelRPS(10.0),
     }
 
     def __init__(self, io: LauncherIO, robot_pose_supplier: Callable[[], Pose2d]) -> None:
