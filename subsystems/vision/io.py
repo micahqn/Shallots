@@ -3,7 +3,6 @@ Structs and IOs for the VisionSubsystem.
 
 Structs are used to simplify logging and reduce logging overhead.
 """
-from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import IntEnum
 from math import radians
@@ -41,7 +40,7 @@ class CameraObservation:
 
 
 # pylint: disable=too-few-public-methods
-class VisionIO(ABC):
+class VisionIO:
     """Base class for VisionIO."""
 
     @autolog
@@ -54,15 +53,12 @@ class VisionIO(ABC):
         tag_ids: List[int] = field(default_factory=list)
 
 
-    @abstractmethod
     def update_inputs(self, inputs: VisionIOInputs) -> None:
         """Update subsystem inputs."""
 
-    @abstractmethod
     def set_throttle(self, throttle: int) -> None:
         """Set the throttle."""
 
-    @abstractmethod
     def get_name(self) -> str:
         """Returns the name of the camera."""
 
