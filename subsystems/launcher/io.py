@@ -23,7 +23,7 @@ CanIds = Constants.CanIDs
 from util import tryUntilOk
 
 
-class LauncherIO(ABC):
+class LauncherIO:
     """
     Abstract base class for Launcher IO implementations.
     Provides the interface for both real hardware and simulation.

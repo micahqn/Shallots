@@ -17,7 +17,7 @@ from phoenix6.phoenix_native import (SwerveDriveState_t, SwerveModuleState_t,
                                      SwerveModulePosition_t, Native)
 from phoenix6.swerve import SwerveModuleState
 from phoenix6.swerve.requests import ApplyRobotSpeeds
-from pykit.autolog import autologgable_output, autolog_output
+from pykit.autolog import autologgable_output, autolog_output, autolog
 from pykit.logger import Logger
 from wpilib import DriverStation, Notifier, RobotController
 from wpilib.sysid import SysIdRoutineLog
@@ -45,6 +45,7 @@ class SwerveSubsystem(Subsystem, swerve.SwerveDrivetrain):
     /index.html
     """
 
+    @autolog
     @make_wpistruct(name="SwerveState")
     @dataclass(slots=True)
     class SwerveDriveState(swerve.SwerveDrivetrain.SwerveDriveState):
@@ -299,7 +300,7 @@ class SwerveSubsystem(Subsystem, swerve.SwerveDrivetrain):
         """
         return self._sys_id_routine_to_apply.dynamic(direction)
 
-    @autolog_output("Drive/State")
+    #@autolog_output("Drive/State")
     def get_cached_state(self) -> SwerveDriveState:
         """
         Returns the current state of the drivetrain.
@@ -360,6 +361,7 @@ class SwerveSubsystem(Subsystem, swerve.SwerveDrivetrain):
             self._drivetrain_id, ctypes.byref(self._c_state)
         )
         self._swerve_state._update_from_native(self._c_state)
+        Logger.processInputs("Drive", self._swerve_state)
 
         for ms, mt, cs, ct in zip(
                 module_states,

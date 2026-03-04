@@ -18,7 +18,7 @@ from constants import Constants
 from util import tryUntilOk
 
 
-class TurretIO(ABC):
+class TurretIO:
     """
     Abstract base class for Turret IO implementations.
     Provides the interface for both real hardware and simulation.

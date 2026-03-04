@@ -1,3 +1,5 @@
+import os
+
 import wpilib
 from commands2 import CommandScheduler, Command
 from ntcore import NetworkTableInstance
@@ -6,6 +8,7 @@ from pykit.loggedrobot import LoggedRobot
 from pykit.logger import Logger
 from pykit.logreplaysource import LogReplaySource
 from pykit.networktables.nt4Publisher import NT4Publisher
+from pykit.wpilog.wpilogreader import WPILOGReader
 from pykit.wpilog.wpilogwriter import WPILOGWriter
 from wpilib import DriverStation, Timer
 
@@ -83,9 +86,13 @@ class Dwayne(LoggedRobot):
 
             # Replaying a log, set up replay source
             case Constants.Mode.REPLAY:
-                self.useTiming = False
-                Logger.setReplaySource(LogReplaySource())
-                Logger.addDataReciever(WPILOGWriter())
+                log_path = os.environ["LOG_PATH"]
+                log_path = os.path.abspath(log_path)
+                print(f"Starting log from {log_path}")
+                Logger.setReplaySource(WPILOGReader(log_path))
+                Logger.addDataReciever(
+                    WPILOGWriter(log_path[:-7] + "_sim.wpilog")
+                )
 
         # Avoid CAN errors from pykit when no PDH/PDP is on the bus (or wrong module ID)
         util._install_safe_power_distribution_logging()

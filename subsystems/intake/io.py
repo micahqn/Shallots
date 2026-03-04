@@ -1,26 +1,23 @@
-from abc import ABC
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from math import pi
 from typing import Final
 
 from phoenix6 import BaseStatusSignal
 from phoenix6.configs import TalonFXConfiguration
-from phoenix6.controls import VelocityVoltage, PositionVoltage, VoltageOut
+from phoenix6.controls import VelocityVoltage, VoltageOut
 from phoenix6.hardware import TalonFX
 from phoenix6.signals import NeutralModeValue, InvertedValue
 from pykit.autolog import autolog
-from wpimath.units import radians, radians_per_second, amperes, celsius
 from wpilib.simulation import DCMotorSim
-
-from wpimath.units import radians, radians_per_second, volts, amperes, celsius
-from wpimath.trajectory import TrapezoidProfile
-from wpimath.system.plant import DCMotor, LinearSystemId
 from wpimath.controller import PIDController
+from wpimath.system.plant import DCMotor, LinearSystemId
+from wpimath.units import radians, radians_per_second, amperes, celsius
 
 from constants import Constants
 from util import tryUntilOk
 
-class IntakeIO(ABC):
+
+class IntakeIO:
     """
     Abstract base class for intake IO implementations.
     Provides the interface for both real hardware and simulation.

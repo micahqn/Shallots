@@ -20,7 +20,7 @@ from constants import Constants
 from util import tryUntilOk
 
 
-class HoodIO(ABC):
+class HoodIO:
     """
     Abstract base class for hood IO implementations.
     Provides the interface for both real hardware and simulation.

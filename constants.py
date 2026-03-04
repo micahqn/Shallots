@@ -139,10 +139,10 @@ class Constants:
         MM_ACCELERATION = 20
         # Only switch to other side of center when goal is at least this many degrees past middle
         CROSS_MIDDLE_HYSTERESIS_DEGREES = 5.0
-        
+
 
     class HoodConstants:
-        GEAR_RATIO = 68/3  
+        GEAR_RATIO = 68/3
         GAINS = (Slot0Configs()
                 .with_k_p(150)
                 .with_k_i(0.0)

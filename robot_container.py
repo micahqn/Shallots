@@ -10,6 +10,7 @@ from pathplannerlib.util import FlippingUtil
 from phoenix6 import swerve
 from phoenix6.configs import TalonFXConfiguration
 from phoenix6.configs.config_groups import NeutralModeValue, MotorOutputConfigs, FeedbackConfigs
+from pykit.logger import Logger
 from pykit.networktables.loggeddashboardchooser import LoggedDashboardChooser
 from wpilib import Field2d, SmartDashboard, XboxController, getDeployDirectory, RobotBase
 from wpimath.geometry import Rotation2d, Pose3d
@@ -22,19 +23,19 @@ from generated.tuner_constants import TunerConstants
 from lib.fuel_sim import FuelSim
 from robot_config import currentRobot, has_subsystem, Robot  # Robot detection (Larry vs Comp)
 from subsystems.climber import ClimberSubsystem
-from subsystems.climber.io import ClimberIOTalonFX, ClimberIOSim
-from subsystems.feeder import FeederIOSim, FeederIOTalonFX, FeederSubsystem
+from subsystems.climber.io import ClimberIOTalonFX, ClimberIOSim, ClimberIO
+from subsystems.feeder import FeederIOSim, FeederIOTalonFX, FeederSubsystem, FeederIO
 from subsystems.hood import HoodSubsystem
-from subsystems.hood.io import HoodIOSim, HoodIOTalonFX
-from subsystems.intake import IntakeSubsystem, IntakeIOSim, IntakeIOTalonFX
-from subsystems.launcher import LauncherIOSim, LauncherIOTalonFX, LauncherSubsystem
+from subsystems.hood.io import HoodIOSim, HoodIOTalonFX, HoodIO
+from subsystems.intake import IntakeSubsystem, IntakeIOSim, IntakeIOTalonFX, IntakeIO
+from subsystems.launcher import LauncherIOSim, LauncherIOTalonFX, LauncherSubsystem, LauncherIO
 from subsystems.aiming import ShooterAimingTable
 from subsystems.superstructure import Superstructure
 from subsystems.swerve import SwerveSubsystem
 from subsystems.turret import TurretSubsystem
-from subsystems.turret.io import TurretIOTalonFX, TurretIOSim
+from subsystems.turret.io import TurretIOTalonFX, TurretIOSim, TurretIO
 from subsystems.vision import VisionSubsystem
-from subsystems.vision.io import VisionIOLimelight
+from subsystems.vision.io import VisionIOLimelight, VisionIO
 from util import make_turret_pose_supplier
 
 
@@ -160,6 +161,20 @@ class RobotContainer:
                 if has_subsystem("hood"):
                     hood_io = HoodIOSim()
                     self.hood = HoodSubsystem(hood_io, turret_pose_sim)
+
+            case Constants.Mode.REPLAY:
+                # Initialize all subsystems
+                # We could potentially grab the metadata of the replay and then see what is active,
+                # But having empty IOs works as well.
+                self.drivetrain = TunerConstants.create_drivetrain()
+                self.vision = VisionSubsystem(self.drivetrain.add_vision_measurement, VisionIO())
+                turret_pose = make_turret_pose_supplier(lambda: self.drivetrain.get_cached_state().pose)
+                self.hood = HoodSubsystem(HoodIO(), turret_pose)
+                self.turret = TurretSubsystem(TurretIO(), turret_pose)
+                self.climber = ClimberSubsystem(ClimberIO())
+                self.intake = IntakeSubsystem(IntakeIO())
+                self.feeder = FeederSubsystem(FeederIO())
+                self.launcher = LauncherSubsystem(LauncherIO(), turret_pose)
 
         # Fuel simulation (for simulation testing)
         def get_field_speeds():
