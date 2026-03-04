@@ -1,5 +1,5 @@
-from abc import ABC
 from dataclasses import dataclass
+from math import pi
 from typing import Final
 
 from phoenix6 import BaseStatusSignal
@@ -9,18 +9,15 @@ from phoenix6.hardware import TalonFX
 from phoenix6.signals import NeutralModeValue
 from pykit.autolog import autolog
 from wpilib.simulation import DCMotorSim
-
-from wpimath.units import radians, radians_per_second, amperes, celsius, rotationsToRadians
-from wpimath.trajectory import TrapezoidProfile
-from wpimath.system.plant import DCMotor, LinearSystemId
 from wpimath.controller import PIDController
-from math import pi
+from wpimath.system.plant import DCMotor, LinearSystemId
+from wpimath.units import radians, radians_per_second, amperes, celsius, rotationsToRadians
 
 from constants import Constants
 from util import tryUntilOk
 
 
-class FeederIO(ABC):
+class FeederIO:
     """
     Abstract base class for Feeder IO implementations.
     Provides the interface for both real hardware and simulation.
@@ -41,11 +38,9 @@ class FeederIO(ABC):
 
     def updateInputs(self, inputs: FeederIOInputs) -> None:
         """Update the inputs with current hardware/simulation state."""
-        pass
 
     def setMotorRPS(self, rps: float) -> None:
         """Set the motor output rotations per second."""
-        pass
 
 
 class FeederIOTalonFX(FeederIO):

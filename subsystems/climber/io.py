@@ -1,5 +1,5 @@
-from abc import ABC
 from dataclasses import dataclass
+from math import pi
 from typing import Final
 
 from phoenix6 import BaseStatusSignal
@@ -8,16 +8,15 @@ from phoenix6.controls import PositionVoltage
 from phoenix6.hardware import TalonFX
 from pykit.autolog import autolog
 from wpilib.simulation import DCMotorSim
+from wpimath.controller import PIDController
 from wpimath.system.plant import DCMotor, LinearSystemId
 from wpimath.units import radians, radians_per_second, volts, amperes, celsius, radiansToRotations
-from wpimath.controller import PIDController
-from math import pi
 
 from constants import Constants
 from util import tryUntilOk
 
 
-class ClimberIO(ABC):
+class ClimberIO:
     """
     Abstract base class for climber IO implementations.
     Provides the interface for both real hardware and simulation.
