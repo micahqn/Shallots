@@ -316,7 +316,7 @@ class RobotContainer:
 
         if self.launcher is not None:
             Trigger(lambda: self._function_controller.getRightTriggerAxis() > 0.75).whileTrue(self.superstructure.set_goal_command(Superstructure.Goal.LAUNCH)).onFalse(self.superstructure.set_goal_command(Superstructure.Goal.DEFAULT))
-            Trigger(lambda: self._function_controller.getLeftTriggerAxis() > 0.75).whileTrue(self.launcher.set_desired_state(self.launcher.SubsystemState.SCORE)).onFalse(self.launcher.set_desired_state(self.launcher.SubsystemState.IDLE))
+            Trigger(lambda: self._function_controller.getLeftTriggerAxis() > 0.75).whileTrue(self.launcher.set_desired_state_command(self.launcher.SubsystemState.SCORE)).onFalse(self.launcher.set_desired_state_command(self.launcher.SubsystemState.IDLE))
 
         else:
             print("Launcher subsystem not available on this robot, unable to bind launcher buttons")
