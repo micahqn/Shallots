@@ -17,7 +17,7 @@ from phoenix6.phoenix_native import (SwerveDriveState_t, SwerveModuleState_t,
                                      SwerveModulePosition_t, Native)
 from phoenix6.swerve import SwerveModuleState
 from phoenix6.swerve.requests import ApplyRobotSpeeds
-from pykit.autolog import autologgable_output, autolog_output
+from pykit.autolog import autologgable_output, autolog_output, autolog
 from pykit.logger import Logger
 from wpilib import DriverStation, Notifier, RobotController
 from wpilib.sysid import SysIdRoutineLog
@@ -33,7 +33,7 @@ if currentRobot == Robot.LARRY:
 else:
     from generated.tuner_constants import TunerSwerveDrivetrain
 
-
+# pylint: disable=too-many-instance-attributes
 @autologgable_output
 class SwerveSubsystem(Subsystem, swerve.SwerveDrivetrain):
     """
@@ -45,6 +45,7 @@ class SwerveSubsystem(Subsystem, swerve.SwerveDrivetrain):
     /index.html
     """
 
+    @autolog
     @make_wpistruct(name="SwerveState")
     @dataclass(slots=True)
     class SwerveDriveState(swerve.SwerveDrivetrain.SwerveDriveState):
@@ -96,6 +97,7 @@ class SwerveSubsystem(Subsystem, swerve.SwerveDrivetrain):
     ) -> None:
         ...
 
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
     @overload
     def __init__(
         self,
@@ -108,6 +110,7 @@ class SwerveSubsystem(Subsystem, swerve.SwerveDrivetrain):
     ) -> None:
         ...
 
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
     @overload
     def __init__(
         self,
@@ -120,6 +123,7 @@ class SwerveSubsystem(Subsystem, swerve.SwerveDrivetrain):
     ) -> None:
         ...
 
+    # pylint: disable=too-many-arguments, too-many-positional-arguments, super-init-not-called
     def __init__(
         self,
         drivetrain_constants: swerve.SwerveDrivetrainConstants,
@@ -129,6 +133,7 @@ class SwerveSubsystem(Subsystem, swerve.SwerveDrivetrain):
         arg3=None,
     ):
         Subsystem.__init__(self)
+        # pylint: disable=non-parent-init-called
         TunerSwerveDrivetrain.__init__(
             self, drivetrain_constants, arg0, arg1, arg2, arg3
         )
@@ -186,7 +191,7 @@ class SwerveSubsystem(Subsystem, swerve.SwerveDrivetrain):
 
         self._sys_id_routine_rotation = SysIdRoutine(
             SysIdRoutine.Config(
-                # This is in radians per second², but SysId only supports
+                # This is in position per second², but SysId only supports
                 # "volts per second"
                 rampRate=math.pi / 6,
                 # Use dynamic voltage of 7 V
@@ -200,7 +205,7 @@ class SwerveSubsystem(Subsystem, swerve.SwerveDrivetrain):
             ),
             SysIdRoutine.Mechanism(
                 lambda output: (
-                                   # output is actually radians per second,
+                                   # output is actually position per second,
                                    # but SysId only supports "volts"
                                    self.set_control(
                                        self._rotation_characterization.with_rotational_rate(
@@ -253,8 +258,12 @@ class SwerveSubsystem(Subsystem, swerve.SwerveDrivetrain):
         )
 
         # PathPlanner logging
-        PathPlannerLogging.setLogTargetPoseCallback(lambda pose: Logger.recordOutput("PathPlanner/Target", pose))
-        PathPlannerLogging.setLogActivePathCallback(lambda path: Logger.recordOutput("PathPlanner/Path", path))
+        PathPlannerLogging.setLogTargetPoseCallback(
+            lambda pose: Logger.recordOutput("PathPlanner/Target", pose)
+        )
+        PathPlannerLogging.setLogActivePathCallback(
+            lambda path: Logger.recordOutput("PathPlanner/Path", path)
+        )
 
         # State optimizations
         n = len(self.modules)
@@ -299,7 +308,6 @@ class SwerveSubsystem(Subsystem, swerve.SwerveDrivetrain):
         """
         return self._sys_id_routine_to_apply.dynamic(direction)
 
-    @autolog_output("Drive/State")
     def get_cached_state(self) -> SwerveDriveState:
         """
         Returns the current state of the drivetrain.
@@ -310,14 +318,19 @@ class SwerveSubsystem(Subsystem, swerve.SwerveDrivetrain):
     def get_field_relative_speeds(self) -> ChassisSpeeds:
         """
         Returns chassis velocities in field frame (for SOTM lead calculation).
-        Robot-relative speeds from cached state are rotated by current gyro heading.
+        Robot-relative speeds from cached state are rotated by current gyro
+        heading.
         """
         state = self._swerve_state
         robot_speeds = state.speeds
         robot_rotation = state.pose.rotation()
         velocity_vector = Translation2d(robot_speeds.vx, robot_speeds.vy)
         field_velocity = velocity_vector.rotateBy(robot_rotation)
-        return ChassisSpeeds(field_velocity.X(), field_velocity.Y(), robot_speeds.omega)
+        return ChassisSpeeds(
+            field_velocity.X(),
+            field_velocity.Y(),
+            robot_speeds.omega
+        )
 
     @autolog_output("Drive/Modules/States")
     def _get_module_states(self) -> List[SwerveModuleState]:
@@ -359,7 +372,9 @@ class SwerveSubsystem(Subsystem, swerve.SwerveDrivetrain):
         Native.api_instance().c_ctre_phoenix6_swerve_drivetrain_get_state(
             self._drivetrain_id, ctypes.byref(self._c_state)
         )
+        # pylint: disable=protected-access
         self._swerve_state._update_from_native(self._c_state)
+        Logger.processInputs("Drive", self._swerve_state)
 
         for ms, mt, cs, ct in zip(
                 module_states,
