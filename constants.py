@@ -130,7 +130,7 @@ class Constants:
         angular_std_dev_baseline = 0.06  # Radians
 
     class TurretConstants:
-        GAINS = (Slot0Configs()
+        GAINS_TRAVEL = (Slot0Configs()
                  .with_k_p(3.067)
                  .with_k_i(0.0)
                  .with_k_d(1.85)
@@ -138,6 +138,19 @@ class Constants:
                  .with_k_v(0.0)
                  .with_k_a(0.0)
                  )
+
+        GAINS_PRECISION= (Slot0Configs() # Slot 1: Slower but stronger (with kI)
+                 .with_k_p(3.067)
+                 .with_k_i(0.03)
+                 .with_k_d(0.0)
+                 .with_k_s(0.725)
+                 .with_k_v(0.0)
+                 .with_k_a(0.0)
+                 )
+
+        PRECISION_THRESHOLD = 0.05 # Switch to Slot 1 when within this many rotations
+
+        STATOR_LIMIT = 40.0 # Limit current to 40A to protect the hard stop
         GEAR_RATIO = 25 / 6
         SUPPLY_CURRENT = 40
         MOI = 0.093001732
