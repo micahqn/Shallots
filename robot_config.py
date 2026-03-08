@@ -120,6 +120,7 @@ def has_subsystem(subsystem_name: str) -> bool:
         #"climber",     # Competition robot has climber
         # Add other Comp subsystems as needed
     }
+    
 
     if currentRobot == Robot.COMP:
         return subsystem_name.lower() in COMP_SUBSYSTEMS

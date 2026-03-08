@@ -3,13 +3,13 @@
   "waypoints": [
     {
       "anchor": {
-        "x": 3.2978915662650605,
-        "y": 5.291686746987953
+        "x": 3.1592296718972896,
+        "y": 5.34827389443652
       },
       "prevControl": null,
       "nextControl": {
-        "x": 3.0028433734939757,
-        "y": 7.22589156626506
+        "x": 2.864181479126205,
+        "y": 7.282478713713627
       },
       "isLocked": false,
       "linkedName": "SNS1"
@@ -20,12 +20,12 @@
         "y": 7.466301204819277
       },
       "prevControl": {
-        "x": 3.636650602409638,
-        "y": 7.367951807228916
+        "x": 3.2627389443651924,
+        "y": 7.4702139800285305
       },
       "nextControl": {
-        "x": 4.238456015550397,
-        "y": 7.532080556267303
+        "x": 4.247261513282657,
+        "y": 7.464969489169253
       },
       "isLocked": false,
       "linkedName": null
@@ -74,8 +74,8 @@
   "pointTowardsZones": [],
   "eventMarkers": [],
   "globalConstraints": {
-    "maxVelocity": 1.75,
-    "maxAcceleration": 4.0,
+    "maxVelocity": 1.25,
+    "maxAcceleration": 3.5,
     "maxAngularVelocity": 720.0,
     "maxAngularAcceleration": 1200.0,
     "nominalVoltage": 12.0,
@@ -89,7 +89,7 @@
   "folder": "PSNS",
   "idealStartingState": {
     "velocity": 0,
-    "rotation": 132.754257434105
+    "rotation": 143.7750557444797
   },
-  "useDefaultConstraints": true
+  "useDefaultConstraints": false
 }

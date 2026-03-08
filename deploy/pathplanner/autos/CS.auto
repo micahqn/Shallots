@@ -5,6 +5,12 @@
     "data": {
       "commands": [
         {
+          "type": "named",
+          "data": {
+            "name": "Aim to Hub"
+          }
+        },
+        {
           "type": "path",
           "data": {
             "pathName": "CSDS1"
@@ -13,7 +19,25 @@
         {
           "type": "named",
           "data": {
+            "name": "Aim to Depot"
+          }
+        },
+        {
+          "type": "wait",
+          "data": {
+            "waitTime": 1.0
+          }
+        },
+        {
+          "type": "named",
+          "data": {
             "name": "Aim to Hub"
+          }
+        },
+        {
+          "type": "wait",
+          "data": {
+            "waitTime": 1.0
           }
         },
         {
