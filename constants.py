@@ -270,13 +270,13 @@ def _init_hardware_configs():
                                                .with_k_p(0.3)
                                                .with_k_i(0.0)
                                                .with_k_d(0.0)
-                                               .with_k_s(0.0)
-                                               .with_k_v(0.0)
+                                               .with_k_s(0.352)
+                                               .with_k_v(0.14285)
                                                .with_k_a(0.0)
                                                )
             Constants.FeederConstants.SUPPLY_CURRENT = 30.0  # Amperes
             Constants.FeederConstants.MOMENT_OF_INERTIA = 0.0067
-            Constants.FeederConstants.FEED_FORWARD = 3.0
+            #Constants.FeederConstants.FEED_FORWARD = 3.0
 
 
 # Initialize hardware configs at module load time

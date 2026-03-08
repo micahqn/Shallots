@@ -1,0 +1,31 @@
+{
+  "version": "2025.0",
+  "command": {
+    "type": "sequential",
+    "data": {
+      "commands": [
+        {
+          "type": "path",
+          "data": {
+            "pathName": "Disrupt (Centre)"
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "Disrupt 1"
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "Disrupt 2"
+          }
+        }
+      ]
+    }
+  },
+  "resetOdom": false,
+  "folder": null,
+  "choreoAuto": false
+}

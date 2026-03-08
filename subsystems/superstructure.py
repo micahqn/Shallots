@@ -83,21 +83,24 @@ class Superstructure(Subsystem):
         ),
 
         Goal.AIMHUB: (
-            None, None, None,
+            None, None, 
+            LauncherSubsystem.SubsystemState.SCORE,
             HoodSubsystem.SubsystemState.AIMBOT,
             TurretSubsystem.SubsystemState.HUB,
             True  # track so aiming block runs and DistanceToHub is updated
         ),
 
         Goal.AIMOUTPOST: (
-            None, None, None,
+            None, None, 
+            LauncherSubsystem.SubsystemState.PASS,
             HoodSubsystem.SubsystemState.PASS,
             TurretSubsystem.SubsystemState.OUTPOST,
             True
         ),
 
         Goal.AIMDEPOT: (
-            None, None, None,
+            None, None, 
+            LauncherSubsystem.SubsystemState.PASS,
             HoodSubsystem.SubsystemState.PASS,
             TurretSubsystem.SubsystemState.DEPOT,
             True
