@@ -5,15 +5,15 @@
     "data": {
       "commands": [
         {
-          "type": "path",
-          "data": {
-            "pathName": "SNS1"
-          }
-        },
-        {
           "type": "named",
           "data": {
             "name": "Aim to Hub"
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "SNS1"
           }
         },
         {

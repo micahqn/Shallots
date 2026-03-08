@@ -8,20 +8,20 @@
       },
       "prevControl": null,
       "nextControl": {
-        "x": 3.276036144578313,
-        "y": 6.657650602409639
+        "x": 2.331155492154065,
+        "y": 7.237318116975749
       },
       "isLocked": false,
       "linkedName": "Start Side"
     },
     {
       "anchor": {
-        "x": 3.2978915662650605,
-        "y": 5.291686746987953
+        "x": 3.1592296718972896,
+        "y": 5.34827389443652
       },
       "prevControl": {
-        "x": 3.233684749645336,
-        "y": 5.533301077480912
+        "x": 2.745192582025677,
+        "y": 5.555292439372327
       },
       "nextControl": null,
       "isLocked": false,
@@ -33,7 +33,7 @@
   "pointTowardsZones": [],
   "eventMarkers": [],
   "globalConstraints": {
-    "maxVelocity": 1.75,
+    "maxVelocity": 1.25,
     "maxAcceleration": 4.0,
     "maxAngularVelocity": 720.0,
     "maxAngularAcceleration": 1200.0,
@@ -42,7 +42,7 @@
   },
   "goalEndState": {
     "velocity": 0,
-    "rotation": 132.754257434105
+    "rotation": 143.7750557444797
   },
   "reversed": false,
   "folder": "PSNS",
@@ -50,5 +50,5 @@
     "velocity": 0,
     "rotation": 180.0
   },
-  "useDefaultConstraints": true
+  "useDefaultConstraints": false
 }
