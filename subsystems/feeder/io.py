@@ -90,8 +90,8 @@ class FeederIOTalonFX(FeederIO):
 
         # Voltage control request
         self._velocityRequest: Final[VelocityVoltage] = VelocityVoltage(0)
-        self._velocityRequest.feed_forward = (
-            Constants.FeederConstants.FEED_FORWARD)
+        #self._velocityRequest.feed_forward = (
+        #    Constants.FeederConstants.FEED_FORWARD)
         self._voltageRequest: Final[VoltageOut] = VoltageOut(0)
 
     def update_inputs(self, inputs: FeederIO.FeederIOInputs) -> None:
@@ -119,8 +119,8 @@ class FeederIOTalonFX(FeederIO):
             self._motor.set_control(self._voltageRequest)
         else:
             self._velocityRequest.velocity = rps
-            self._velocityRequest.feed_forward = (
-                Constants.FeederConstants.FEED_FORWARD)
+            #self._velocityRequest.feed_forward = (
+            #    Constants.FeederConstants.FEED_FORWARD)
             self._motor.set_control(self._velocityRequest)
 
 
