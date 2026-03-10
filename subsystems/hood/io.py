@@ -75,6 +75,9 @@ class HoodIOTalonFX(HoodIO):
             5,
             lambda: self.hood_motor.configurator.apply(motor_config, 0.25)
         )
+        try_until_ok(5,
+            lambda: self.hood_motor.set_position(0)
+        )
 
         # Create status signals for motor
         self.position = self.hood_motor.get_position()

@@ -3,7 +3,7 @@
 from enum import Enum, auto
 from typing import Final
 
-from phoenix6.configs.config_groups import Slot0Configs
+from phoenix6.configs.config_groups import Slot0Configs, Slot1Configs
 from robotpy_apriltag import AprilTagFieldLayout, AprilTagField
 from wpilib import RobotBase
 from wpimath.geometry import Pose2d, Transform3d, Rotation3d
@@ -139,7 +139,7 @@ class Constants:
                  .with_k_a(0.0)
                  )
 
-        GAINS_PRECISION= (Slot0Configs() # Slot 1: Slower but stronger (with kI)
+        GAINS_PRECISION= (Slot1Configs() # Slot 1: Slower but stronger (with kI)
                  .with_k_p(3.067)
                  .with_k_i(0.03)
                  .with_k_d(0.0)
