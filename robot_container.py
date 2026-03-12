@@ -92,6 +92,12 @@ class RobotContainer:
                         lambda: self.drivetrain.get_cached_state(
                         ).pose.rotation(),
                     ),
+                    VisionIOLimelight(
+                        Constants.VisionConstants.BACK,
+                        Constants.VisionConstants.robot_to_back,
+                        lambda: self.drivetrain.get_cached_state(
+                        ).pose.rotation(),
+                    ),
                 )
 
                 # Hood, launcher, turret use turret position (robot center +
@@ -501,34 +507,6 @@ class RobotContainer:
             self._function_controller.a().onTrue(
                 self.superstructure.set_goal_command(
                     Superstructure.Goal.DEFAULT
-                )
-            )
-
-            self._function_controller.back().onTrue(
-                InstantCommand(
-                    lambda: self.turret.set_desired_state(
-                        self.turret.SubsystemState.MANUAL
-                    )
-                ).alongWith(
-                    InstantCommand(
-                        lambda: self.hood.set_desired_state(
-                            self.hood.SubsystemState.MANUAL
-                        )
-                    )
-                )
-            )
-
-            self._function_controller.back().whileTrue(
-                InstantCommand(
-                    lambda: self.turret.rotate_manually(
-                        self._function_controller.getRightX()
-                    )
-                ).alongWith(
-                    InstantCommand(
-                        lambda: self.hood.rotate_manually(
-                            self._function_controller.getRightY()
-                        )
-                    )
                 )
             )
 

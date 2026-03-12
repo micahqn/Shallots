@@ -129,9 +129,8 @@ class TurretSubsystem(StateSubsystem):
 
     def rotate_to_goal(self, target: SubsystemState):
         """
-        Aim turret at goal. Respects hard stop range [0, MAX_ROTATIONS] and
-        uses
-        5° hysteresis past center before switching sides.
+        Aim turret at goal. Respects hard stop range [MIN_ROTATIONS, MAX_ROTATIONS]
+        and uses 5° hysteresis past center before switching sides.
         """
         self.set_desired_state(target)
         if self.get_current_state() == self.SubsystemState.MANUAL:
@@ -154,19 +153,23 @@ class TurretSubsystem(StateSubsystem):
         while desired_turret < -pi:
             desired_turret += 2 * pi
 
-        # Physical range: [0, max_radians] (zero to hard stop). Map desired
-        # to this range only.
+        # Physical range: [min_radians, max_radians]. Map desired angle into
+        # this range (wrap as needed), then clamp.
+        min_radians = rotationsToRadians(
+            Constants.TurretConstants.MIN_ROTATIONS
+        )
         max_radians = rotationsToRadians(
             Constants.TurretConstants.MAX_ROTATIONS
         )
         desired_in_range = desired_turret
-        while desired_in_range < 0:
+        while desired_in_range < min_radians:
             desired_in_range += 2 * pi
         while desired_in_range > max_radians:
             desired_in_range -= 2 * pi
+        desired_in_range = max(min_radians, min(max_radians, desired_in_range))
 
         current_turret = rotationsToRadians(self.inputs.turret_position)
-        middle = max_radians / 2
+        middle = (min_radians + max_radians) / 2
         hysteresis_rad = deg_to_rad(
             Constants.TurretConstants.CROSS_MIDDLE_HYSTERESIS_DEGREES
         )
@@ -193,13 +196,6 @@ class TurretSubsystem(StateSubsystem):
         self.target_radians = field_angle_to_goal
         self._io.set_position(command_turret)
 
-    def rotate_manually(self,
-                        axis: float
-                        ):  # Axis is the value of the X-axis from a joystick
-        """Manually rotates the turret."""
-        target_velocity = axis * Constants.TurretConstants.MAX_MANUAL_VELOCITY
-        self._io.set_velocity(target_velocity)
-
     def get_current_state(self) -> SubsystemState | None:
         """get state"""
         return super().get_current_state()
@@ -214,7 +210,7 @@ class TurretSubsystem(StateSubsystem):
         if auto_aim:
             self.rotate_to_goal(desired_state)
         else:
-            self.rotate_manually(0.0)
+            self._io.set_position(self.inputs.turret_position)
 
     def get_component_pose(self) -> Pose3d:
         """Gets the articulated component pose for AdvantageScope."""
