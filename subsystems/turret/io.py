@@ -57,9 +57,9 @@ class TurretIOTalonFX(TurretIO):
         )
 
         self.controller = PIDController(
-            Constants.TurretConstants.GAINS.k_p,
-            Constants.TurretConstants.GAINS.k_i,
-            Constants.TurretConstants.GAINS.k_d,
+            Constants.TurretConstants.GAINS_TRAVEL.k_p,
+            Constants.TurretConstants.GAINS_TRAVEL.k_i,
+            Constants.TurretConstants.GAINS_TRAVEL.k_d,
         )
 
         motor_config = TalonFXConfiguration()
@@ -147,7 +147,7 @@ class TurretIOTalonFX(TurretIO):
             .with_position(rotations)
             .with_slot(self.current_active_slot) # This tells the motor which PID gains to use!
             .with_limit_forward_motion(rotations > Constants.TurretConstants.MAX_ROTATIONS)
-            .with_limit_reverse_motion(rotations < 0)
+            .with_limit_reverse_motion(rotations < Constants.TurretConstants.MIN_ROTATIONS)
         )
 
 

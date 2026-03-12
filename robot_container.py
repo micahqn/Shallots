@@ -92,6 +92,12 @@ class RobotContainer:
                         lambda: self.drivetrain.get_cached_state(
                         ).pose.rotation(),
                     ),
+                    VisionIOLimelight(
+                        Constants.VisionConstants.BACK,
+                        Constants.VisionConstants.robot_to_back,
+                        lambda: self.drivetrain.get_cached_state(
+                        ).pose.rotation(),
+                    ),
                 )
 
                 # Hood, launcher, turret use turret position (robot center +

@@ -80,10 +80,9 @@ class ShooterAimingTable:
         """Seed with tuned values from stationary testing (distance m,
         hood rotations, flywheel RPS, ToF sec)."""
         # From testing: Distance (m), Hood (rotations), Flywheel (RPS), ToF (s)
-        distance = [1.7, 2.56, 3.5, 4.49, 5.365]
-        hood_rotations = [0.0, 0.0048828125, 0.0068359375, 0.02026367188,
-                          0.03100585938]  # from zero (hood down = 0)
-        flywheel_rps = [28.0, 30.0, 35.0, 38.0, 44.0]
+        distance = [1.629, 1.996, 2.504, 3.011, 3.502, 4.293, 5.043, 5.879]
+        hood_rotations = [0,0,0.021,0.03,0.03,0.039,0.041,0.045]  # from zero (hood down = 0)
+        flywheel_rps = [25,28,29,30,32,41,46,54]
         # ToF = time from ball exit to impact (s); seed with dist/12 m/s
         tof_sec = [d / 12.0 for d in distance]
         self._rpm_dist = list(distance)

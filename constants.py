@@ -108,12 +108,22 @@ class Constants:
 
     class VisionConstants:
         FRONT = "limelight-front"
-        # LAUNCHER = "limelight-al"
+        BACK = "limelight-turret"
 
         robot_to_front = Transform3d(
-            0.2,
-            0.0,
-            0.0,
+            0.27622,
+            -0.0762,
+            0.2794,
+            Rotation3d(
+                0.0,
+                0.0,
+                0.0
+            )
+        )
+        robot_to_back = Transform3d(
+            -0.2483358,
+            -0.2339594,
+            0.26035,
             Rotation3d(
                 0.0,
                 0.0,
@@ -131,51 +141,51 @@ class Constants:
 
     class TurretConstants:
         GAINS_TRAVEL = (Slot0Configs()
-                 .with_k_p(3.067)
+                 .with_k_p(4.5)
                  .with_k_i(0.0)
-                 .with_k_d(1.85)
-                 .with_k_s(0.725)
+                 .with_k_d(1.0)
+                 .with_k_s(0.5)
                  .with_k_v(0.0)
                  .with_k_a(0.0)
                  )
 
         GAINS_PRECISION= (Slot1Configs() # Slot 1: Slower but stronger (with kI)
-                 .with_k_p(3.067)
-                 .with_k_i(0.03)
+                 .with_k_p(25.5)
+                 .with_k_i(0.3)
                  .with_k_d(0.0)
-                 .with_k_s(0.725)
+                 .with_k_s(0.5)
                  .with_k_v(0.0)
                  .with_k_a(0.0)
                  )
 
-        PRECISION_THRESHOLD = 0.05 # Switch to Slot 1 when within this many rotations
+        PRECISION_THRESHOLD = 0.07 # Switch to Slot 1 when within this many rotations
 
         STATOR_LIMIT = 40.0 # Limit current to 40A to protect the hard stop
         GEAR_RATIO = 25 / 6
         SUPPLY_CURRENT = 40
         MOI = 0.093001732
-        MAX_ROTATIONS = 0.969
-        MAX_MANUAL_VELOCITY = 20  # rad/sec
+        MAX_ROTATIONS = 0.099854
+        MIN_ROTATIONS = -0.861328
         SETPOINT_TOLERANCE = 0.167
         MM_VELOCITY = 1
         MM_ACCELERATION = 20
         # Only switch to other side of center when goal is at least this
         # many degrees past middle
-        CROSS_MIDDLE_HYSTERESIS_DEGREES = 5.0
+        CROSS_MIDDLE_HYSTERESIS_DEGREES = 2.0
 
     class HoodConstants:
-        GEAR_RATIO = 68 / 3
+        GEAR_RATIO = 15.5555 # old 68 / 3
         GAINS = (Slot0Configs()
-                 .with_k_p(150)
+                 .with_k_p(142)
                  .with_k_i(0.0)
-                 .with_k_d(4.0)
-                 .with_k_s(0.5)
+                 .with_k_d(2.0)
+                 .with_k_s(0.475)
                  .with_k_v(0.0)
                  .with_k_a(0.0)
                  )
         SUPPLY_CURRENT = 30
         # positions
-        STOW = -0.0263671875
+        STOW = 0.0
         PASSING = 0.09
         MAX_MANUAL_VELOCITY = 20
         HARDCODED_POSITION = 0.05
@@ -183,6 +193,8 @@ class Constants:
         MAX_DISTANCE_FOR_SLOW_LAUNCH = 2.55
         MAX_DISTANCE_FOR_MEDIUM_LAUNCH = 2.90
         SETPOINT_TOLERANCE = 0.67
+        MM_VELOCITY = 1
+        MM_ACCELERATION = 20
 
     class FieldConstants:
         HUB_POSE = Pose2d(
@@ -195,12 +207,12 @@ class Constants:
 
     class GoalLocations:
         BLUE_HUB = Pose2d(4.625594, 4.034536, 0)
-        BLUE_DEPOT_PASS = Pose2d(2.312797, 2.017268, 0)
-        BLUE_OUTPOST_PASS = Pose2d(2.312797, 6.051804, 0)
+        BLUE_DEPOT_PASS = Pose2d(2.312797, 6.051804, 0)
+        BLUE_OUTPOST_PASS = Pose2d(2.312797, 2.017268, 0)
 
         RED_HUB = Pose2d(11.915394, 4.034536, 180)
-        RED_DEPOT_PASS = Pose2d(14.228191, 6.051804, 180)
-        RED_OUTPOST_PASS = Pose2d(14.228191, 2.017268, 180)
+        RED_DEPOT_PASS = Pose2d(14.228191, 2.017268, 180)
+        RED_OUTPOST_PASS = Pose2d(14.228191, 6.051804, 180)
 
 
 # Initialize robot-specific hardware configurations
@@ -264,7 +276,7 @@ def _init_hardware_configs():
             # actual gear ratio
             Constants.LauncherConstants.GAINS = (Slot0Configs()
                                                  .with_k_p(0.2)
-                                                 .with_k_i(0.0)
+                                                 .with_k_i(0.441)
                                                  .with_k_d(0.0)
                                                  .with_k_s(0.2750000067)
                                                  .with_k_v(0.12787)
@@ -274,7 +286,7 @@ def _init_hardware_configs():
             Constants.LauncherConstants.MOMENT_OF_INERTIA = 0.0030700826
             Constants.LauncherConstants.FLYWHEEL_RADIUS = 2.0 * 0.0254
             # Constants.LauncherConstants.FEED_FORWARD = 4.0
-            Constants.LauncherConstants.MAX_RPS = 75.0
+            Constants.LauncherConstants.MAX_RPS = 90.0
 
             # Feeder
             Constants.FeederConstants.GEAR_RATIO = 1.0  # Adjust based on

@@ -82,8 +82,7 @@ class HoodSubsystem(StateSubsystem):
             if self._aiming_hood_setpoint is not None:
                 # LUT value is rotations from zero (hood down); add zero
                 # position for absolute motor setpoint
-                self.target = (self.inputs.hood_zero_position +
-                               self._aiming_hood_setpoint)
+                self.target = self._aiming_hood_setpoint
             else:
                 self.target = Constants.HoodConstants.STOW
             self.io.set_position(self.target)

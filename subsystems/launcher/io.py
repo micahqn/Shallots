@@ -132,6 +132,10 @@ class LauncherIOTalonFX(LauncherIO):
             self._voltage_request = VoltageOut(0)
             self._main_motor.set_control(self._voltage_request)
         else:
+            if rps > LauncherConstants.MAX_RPS:
+                rps = LauncherConstants.MAX_RPS
+            elif rps < 0.0:
+                rps = 0.0
             self._velocityRequest.velocity = rps
             self._main_motor.set_control(self._velocityRequest)
 

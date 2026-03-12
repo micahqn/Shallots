@@ -5,7 +5,7 @@ from typing import Final
 
 from phoenix6 import BaseStatusSignal
 from phoenix6.configs import TalonFXConfiguration
-from phoenix6.controls import PositionVoltage
+from phoenix6.controls import MotionMagicVoltage
 from phoenix6.hardware import TalonFX
 from phoenix6.signals import InvertedValue, NeutralModeValue
 from phoenix6.units import celsius
@@ -13,7 +13,7 @@ from pykit.autolog import autolog
 from wpilib.simulation import DCMotorSim
 from wpimath.controller import PIDController
 from wpimath.system.plant import DCMotor, LinearSystemId
-from wpimath.units import (radians, radiansToRotations, volts, amperes,
+from wpimath.units import (radians, volts, amperes,
                            rotationsToRadians, radians_per_second)
 
 from constants import Constants
@@ -61,6 +61,10 @@ class HoodIOTalonFX(HoodIO):
 
         motor_config = TalonFXConfiguration()
         motor_config.slot0 = Constants.HoodConstants.GAINS
+        motor_config.motion_magic.motion_magic_cruise_velocity = (
+            Constants.HoodConstants.MM_VELOCITY)
+        motor_config.motion_magic.motion_magic_acceleration = (
+            Constants.HoodConstants.MM_ACCELERATION)
         motor_config.feedback.sensor_to_mechanism_ratio = (
             Constants.HoodConstants.GEAR_RATIO)
         motor_config.motor_output.neutral_mode = NeutralModeValue.BRAKE
@@ -97,7 +101,7 @@ class HoodIOTalonFX(HoodIO):
         self.hood_motor.optimize_bus_utilization()
 
         # Voltage control request
-        self.position_request = PositionVoltage(0)
+        self.position_request = MotionMagicVoltage(0)
 
     def update_inputs(self, inputs: HoodIO.HoodIOInputs) -> None:
         """Update inputs with current motor state."""

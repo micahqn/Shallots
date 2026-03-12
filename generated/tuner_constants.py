@@ -174,7 +174,7 @@ class TunerConstants:
     _back_right_drive_motor_id = 4
     _back_right_steer_motor_id = 8
     _back_right_encoder_id = 8
-    _back_right_encoder_offset: units.rotation = -0.04736328125
+    _back_right_encoder_offset: units.rotation = 0.144775390625
     _back_right_steer_motor_inverted = False
     _back_right_encoder_inverted = False
 
