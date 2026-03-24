@@ -40,6 +40,8 @@ class Dwayne(LoggedRobot):
     """Dwayne: The robot, the myth, the legend, and the baller."""
 
     def __init__(self) -> None:
+        # Suppress WPILib loop-overrun/watchdog messages so they don't flood logs
+        util.install_loop_overrun_stderr_filter()
         super().__init__()
 
         Logger.recordMetadata("Robot", currentRobot.name)

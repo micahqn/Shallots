@@ -82,8 +82,7 @@ class HoodSubsystem(StateSubsystem):
             if self._aiming_hood_setpoint is not None:
                 # LUT value is rotations from zero (hood down); add zero
                 # position for absolute motor setpoint
-                self.target = (self.inputs.hood_zero_position +
-                               self._aiming_hood_setpoint)
+                self.target = self._aiming_hood_setpoint
             else:
                 self.target = Constants.HoodConstants.STOW
             self.io.set_position(self.target)
@@ -105,14 +104,6 @@ class HoodSubsystem(StateSubsystem):
     def get_current_state(self) -> SubsystemState | None:
         """get state"""
         return super().get_current_state()
-
-    def rotate_manually(self,
-                        axis: float
-                        ):  # Axis is the value of the X-axis from a joystick
-        """Manually rotates the turret."""
-        self.set_desired_state(self.SubsystemState.MANUAL)
-        target_velocity = axis * Constants.HoodConstants.MAX_MANUAL_VELOCITY
-        self.io.set_velocity(target_velocity)
 
     def get_component_pose(self, turret: Pose3d) -> Pose3d:
         """

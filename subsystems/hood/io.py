@@ -5,7 +5,7 @@ from typing import Final
 
 from phoenix6 import BaseStatusSignal
 from phoenix6.configs import TalonFXConfiguration
-from phoenix6.controls import PositionVoltage, VelocityVoltage
+from phoenix6.controls import MotionMagicVoltage
 from phoenix6.hardware import TalonFX
 from phoenix6.signals import InvertedValue, NeutralModeValue
 from phoenix6.units import celsius
@@ -13,7 +13,7 @@ from pykit.autolog import autolog
 from wpilib.simulation import DCMotorSim
 from wpimath.controller import PIDController
 from wpimath.system.plant import DCMotor, LinearSystemId
-from wpimath.units import (radians, radiansToRotations, volts, amperes,
+from wpimath.units import (radians, volts, amperes,
                            rotationsToRadians, radians_per_second)
 
 from constants import Constants
@@ -39,16 +39,12 @@ class HoodIO:
         hood_current: amperes = 0.0
         hood_temperature: celsius = 0.0
         hood_setpoint: float = 0.0
-        hood_zero_position: float = 0.0
 
     def update_inputs(self, inputs: HoodIOInputs) -> None:
         """Update the inputs with current hardware/simulation state."""
 
     def set_position(self, rotation: float) -> None:
         """set rotation value (0-1) for the motor to go to."""
-
-    def set_velocity(self, velocity: radians_per_second) -> None:
-        """Set the hood velocity in position per second."""
 
 
 # pylint: disable=too-many-instance-attributes
@@ -65,6 +61,10 @@ class HoodIOTalonFX(HoodIO):
 
         motor_config = TalonFXConfiguration()
         motor_config.slot0 = Constants.HoodConstants.GAINS
+        motor_config.motion_magic.motion_magic_cruise_velocity = (
+            Constants.HoodConstants.MM_VELOCITY)
+        motor_config.motion_magic.motion_magic_acceleration = (
+            Constants.HoodConstants.MM_ACCELERATION)
         motor_config.feedback.sensor_to_mechanism_ratio = (
             Constants.HoodConstants.GEAR_RATIO)
         motor_config.motor_output.neutral_mode = NeutralModeValue.BRAKE
@@ -75,6 +75,9 @@ class HoodIOTalonFX(HoodIO):
             5,
             lambda: self.hood_motor.configurator.apply(motor_config, 0.25)
         )
+        try_until_ok(5,
+            lambda: self.hood_motor.set_position(0)
+        )
 
         # Create status signals for motor
         self.position = self.hood_motor.get_position()
@@ -83,7 +86,6 @@ class HoodIOTalonFX(HoodIO):
         self.current = self.hood_motor.get_stator_current()
         self.temperature = self.hood_motor.get_device_temp()
         self.setpoint = self.hood_motor.get_closed_loop_reference()
-        self._zero_position = self.position.value_as_double
         self.target_position = self.position.value_as_double
 
         # Configure update frequencies
@@ -99,8 +101,7 @@ class HoodIOTalonFX(HoodIO):
         self.hood_motor.optimize_bus_utilization()
 
         # Voltage control request
-        self.position_request = PositionVoltage(0)
-        self.velocity_request = VelocityVoltage(0)
+        self.position_request = MotionMagicVoltage(0)
 
     def update_inputs(self, inputs: HoodIO.HoodIOInputs) -> None:
         """Update inputs with current motor state."""
@@ -122,31 +123,17 @@ class HoodIOTalonFX(HoodIO):
         inputs.hood_current = self.current.value_as_double
         inputs.hood_temperature = self.temperature.value_as_double
         inputs.hood_setpoint = self.setpoint.value_as_double
-        inputs.hood_zero_position = self._zero_position
 
     def set_position(self, rotation: float) -> None:
         """Set the position."""
-        if (rotation > Constants.HoodConstants.MAX_ROTATIONS +
-                self._zero_position):
-            rotation = (Constants.HoodConstants.MAX_ROTATIONS +
-                        self._zero_position)
-        elif rotation < self._zero_position:
-            rotation = self._zero_position
+        if (rotation > Constants.HoodConstants.MAX_ROTATIONS):
+            rotation = Constants.HoodConstants.MAX_ROTATIONS
+        elif rotation < 0.0:
+            rotation = 0.0
 
         self.hood_motor.set_control(
             self.position_request.with_position(rotation)
         )
-
-    def set_velocity(self, velocity: float) -> None:
-        """Set the velocity."""
-        if (velocity > 0 and self.position.value_as_double >=
-                Constants.HoodConstants.MAX_ROTATIONS + self._zero_position):
-            velocity = 0
-        elif (velocity < 0 and self.position.value_as_double <=
-              self._zero_position):
-            velocity = 0
-        self.velocity_request = VelocityVoltage(radiansToRotations(velocity))
-        self.hood_motor.set_control(self.velocity_request)
 
 
 class HoodIOSim(HoodIO):
@@ -170,8 +157,6 @@ class HoodIOSim(HoodIO):
             Constants.HoodConstants.GAINS.k_d / (2 * pi) * 0.1
             # D is too extreme
         )
-
-        self._zero_position = 0.0  # Sim starts at 0
 
     def update_inputs(self, inputs: HoodIO.HoodIOInputs) -> None:
         """Update inputs with current motor Status Signals."""
@@ -201,16 +186,10 @@ class HoodIOSim(HoodIO):
     def set_position(self, rotation: float) -> None:
         """Set the position."""
 
-        if (rotation > Constants.HoodConstants.MAX_ROTATIONS +
-                self._zero_position):
-            rotation = (Constants.HoodConstants.MAX_ROTATIONS +
-                        self._zero_position)
-        elif rotation < self._zero_position:
-            rotation = self._zero_position
+        if (rotation > Constants.HoodConstants.MAX_ROTATIONS):
+            rotation = Constants.HoodConstants.MAX_ROTATIONS
+        elif rotation < 0.0:
+            rotation = 0.0
 
         self.closed_loop = True
         self.controller.setSetpoint(rotationsToRadians(rotation))
-
-    def set_velocity(self, velocity: float) -> None:
-        self.closed_loop = True
-        self.controller.setSetpoint(rotationsToRadians(velocity))

@@ -1,4 +1,5 @@
 """Miscellaneous functions used throughout the robot."""
+import sys
 from typing import Callable, Optional
 
 from phoenix6 import StatusCode
@@ -7,6 +8,49 @@ from wpilib import PowerDistribution, DriverStation
 from wpimath.geometry import Pose2d, Translation2d
 
 from constants import Constants
+
+# Substrings that identify WPILib loop-overrun/watchdog/epoch messages to suppress from stderr
+_LOOP_OVERRUN_SUPPRESS_PATTERNS = (
+    "overrun",
+    "Watchdog not fed",
+    "PrintEpochs",
+    "PrintLoopOverrunMessage",
+    "SmartDashboard::UpdateValues()",
+    "Shuffleboard::Update()",
+    "RobotPeriodic():",
+    "LiveWindow::UpdateValues()",
+    "AutonomousPeriodic():",
+    "TeleopPeriodic():",
+    "DisabledPeriodic():",
+    "TestPeriodic():",
+)
+
+
+def install_loop_overrun_stderr_filter() -> None:
+    """
+    Filter WPILib loop-overrun and watchdog messages from stderr so they don't
+    clutter logs. Only lines matching known timing/overrun patterns are
+    suppressed; real errors are still printed.
+    """
+    _real_stderr = sys.stderr
+
+    class _FilteredStderr:
+        def write(self, text: str) -> int:
+            if not text.strip():
+                return _real_stderr.write(text)
+            for pattern in _LOOP_OVERRUN_SUPPRESS_PATTERNS:
+                if pattern in text:
+                    return len(text)  # suppress: pretend we wrote it
+            return _real_stderr.write(text)
+
+        def flush(self) -> None:
+            _real_stderr.flush()
+
+        def __getattr__(self, name: str):
+            return getattr(_real_stderr, name)
+
+    sys.stderr = _FilteredStderr()
+
 
 PHASE_BOUNDARIES = [
     (130, "S1", False),
@@ -18,30 +62,51 @@ PHASE_BOUNDARIES = [
 
 def get_game_phase() -> tuple[str, int]:
     """Returns the current game phase and remaining time in that phase."""
-    if DriverStation.isAutonomous():
-        return "Autonomous", int(DriverStation.getMatchTime())
-    if not DriverStation.isTeleop():
-        return "Disabled", int(DriverStation.getMatchTime())
-
+    game_message = DriverStation.getGameSpecificMessage() # Returns the winning alliance for auto as either R or B
+ 
     match_time = int(DriverStation.getMatchTime())
+    if DriverStation.isAutonomous():
+        return "Autonomous", match_time
+    if not DriverStation.isTeleop():
+        return "Disabled", match_time
 
-    for threshold, label, winner_active in PHASE_BOUNDARIES:
-        if match_time > threshold:
-            status = hub_status(winner_active, DriverStation.getAlliance())
-            status_str = "Unknown" if status is None else "Active" if status else "Inactive"
-            return f"{label} ({status_str})", match_time - threshold
+    is_blue = DriverStation.getAlliance() == DriverStation.Alliance.kBlue
 
-    return "E (Active)", match_time
+    match match_time:
+        case x if x <= 30.0:
+            return "E (Active)", match_time
+        case x if 30.0 < x <= 55.0:
+            status = hub_status(True, game_message, is_blue)
+            return f"S4 ({status})", match_time - 30.0
+        case x if 55.0 < x <= 80.0:
+            status = hub_status(False, game_message, is_blue)
+            return f"S3 ({status})", match_time - 55.0
+        case x if 80.0 < x <= 105.0:
+            status = hub_status(True, game_message, is_blue)
+            return f"S2 ({status})", match_time - 80.0
+        case x if 105.0 < x <= 130.0:
+            status = hub_status(False, game_message, is_blue)
+            return f"S1 ({status})", match_time - 105.0
+        case _:
+            return "T (Active)", match_time - 130.0
 
-def hub_status(winner_active: bool, alliance: DriverStation.Alliance) -> Optional[bool]:
+def hub_status(winner_active, game_message, is_blue):
     """
-    Returns True if the alliance's hub is active, False otherwise.
-    Returns None if there's no game message.
+    Returns the status of the hub based on the winner active and winner.
     """
-    message = DriverStation.getGameSpecificMessage()
-    if not message:
-        return None
-    return winner_active == ((alliance == DriverStation.Alliance.kBlue) == (message == "B"))
+    if not game_message:
+        return "Unknown"
+
+    if winner_active and game_message == "B" and is_blue:
+        return "Active"
+    elif winner_active and game_message == "R" and not is_blue:
+        return "Active"
+    elif not winner_active and game_message == "B" and not is_blue:
+        return "Active"
+    elif not winner_active and game_message == "R" and is_blue:
+        return "Active"
+    else:
+        return "Inactive"
 
 def make_turret_pose_supplier(
     robot_pose_supplier: Callable[[], Pose2d],

@@ -5,7 +5,7 @@ from typing import Final
 
 from phoenix6 import BaseStatusSignal
 from phoenix6.configs import TalonFXConfiguration
-from phoenix6.controls import MotionMagicVoltage, VelocityVoltage
+from phoenix6.controls import MotionMagicVoltage
 from phoenix6.hardware import TalonFX
 from phoenix6.signals import NeutralModeValue, InvertedValue
 from pykit.autolog import autolog
@@ -38,15 +38,13 @@ class TurretIO:
         turret_temperature: celsius = 0.0
         turret_setpoint: radians = 0.0
         turret_target_position: float = 0.0
+        turret_active_slot: int = 0
 
     def update_inputs(self, inputs: TurretIOInputs) -> None:
         """Update the inputs with current hardware/simulation state."""
 
     def set_position(self, position: radians) -> None:
         """Set the turret position in position."""
-
-    def set_velocity(self, velocity: radians_per_second) -> None:
-        """Set the turret velocity in position per second."""
 
 # pylint: disable=too-many-instance-attributes
 class TurretIOTalonFX(TurretIO):
@@ -59,13 +57,14 @@ class TurretIOTalonFX(TurretIO):
         )
 
         self.controller = PIDController(
-            Constants.TurretConstants.GAINS.k_p,
-            Constants.TurretConstants.GAINS.k_i,
-            Constants.TurretConstants.GAINS.k_d,
+            Constants.TurretConstants.GAINS_TRAVEL.k_p,
+            Constants.TurretConstants.GAINS_TRAVEL.k_i,
+            Constants.TurretConstants.GAINS_TRAVEL.k_d,
         )
 
         motor_config = TalonFXConfiguration()
-        motor_config.slot0 = Constants.TurretConstants.GAINS
+        motor_config.slot0 = Constants.TurretConstants.GAINS_TRAVEL
+        motor_config.slot1 = Constants.TurretConstants.GAINS_PRECISION
         motor_config.motion_magic.motion_magic_cruise_velocity = (
             Constants.TurretConstants.MM_VELOCITY)
         motor_config.motion_magic.motion_magic_acceleration = (
@@ -74,6 +73,10 @@ class TurretIOTalonFX(TurretIO):
             Constants.TurretConstants.GEAR_RATIO)
         motor_config.motor_output.neutral_mode = NeutralModeValue.BRAKE
         motor_config.motor_output.inverted = InvertedValue.CLOCKWISE_POSITIVE
+
+        # Set Current Limits to protect your gears at the hard stop
+        motor_config.current_limits.stator_current_limit_enable = True
+        motor_config.current_limits.stator_current_limit = Constants.TurretConstants.STATOR_LIMIT
 
         try_until_ok(
             5,
@@ -90,6 +93,7 @@ class TurretIOTalonFX(TurretIO):
         self.temperature = self.turret_motor.get_device_temp()
         self.setpoint = self.turret_motor.get_closed_loop_reference()
         self.target_position = 0.0
+        self.current_active_slot = 0
 
         BaseStatusSignal.set_update_frequency_for_all(
             50,
@@ -104,7 +108,6 @@ class TurretIOTalonFX(TurretIO):
         self.turret_motor.optimize_bus_utilization()
 
         self.position_request = MotionMagicVoltage(0)
-        self.velocity_request = VelocityVoltage(0)
 
     def update_inputs(self, inputs: TurretIO.TurretIOInputs):
         motor_status = BaseStatusSignal.refresh_all(
@@ -124,31 +127,29 @@ class TurretIOTalonFX(TurretIO):
         inputs.turret_temperature = self.temperature.value_as_double
         inputs.turret_setpoint = self.setpoint.value_as_double
         inputs.turret_target_position = self.target_position
+        inputs.turret_active_slot = self.current_active_slot
 
     def set_position(self, position: radians) -> None:
         """Set the turret position in position."""
+
         rotations = radiansToRotations(position)
         self.target_position = rotations
+
+        # Calculate current error
+        current_pos = self.position.value_as_double
+        error = abs(rotations - current_pos)
+
+        # Pick the slot: 1 for precision, 0 for travel
+        self.current_active_slot = 1 if error < Constants.TurretConstants.PRECISION_THRESHOLD else 0
+
         self.turret_motor.set_control(
             self.position_request
             .with_position(rotations)
+            .with_slot(self.current_active_slot) # This tells the motor which PID gains to use!
             .with_limit_forward_motion(rotations > Constants.TurretConstants.MAX_ROTATIONS)
-            .with_limit_reverse_motion(rotations < 0)
+            .with_limit_reverse_motion(rotations < Constants.TurretConstants.MIN_ROTATIONS)
         )
 
-    def set_velocity(self, velocity: radians_per_second) -> None:
-        """
-        Set the turret velocity in position per second using closed loop
-        control.
-        """
-        if (velocity > 0 and self.position.value_as_double >=
-                Constants.TurretConstants.MAX_ROTATIONS):
-            velocity = 0
-        elif (velocity < 0 and self.position.value_as_double <=
-              0):
-            velocity = 0
-        self.velocity_request = VelocityVoltage(radiansToRotations(velocity))
-        self.turret_motor.set_control(self.velocity_request)
 
 class TurretIOSim(TurretIO):
     """Simulation implementation for deterministic outputs."""
@@ -171,9 +172,9 @@ class TurretIOSim(TurretIO):
         self.applied_volts: float = 0.0
 
         self.controller = PIDController(
-            Constants.TurretConstants.GAINS.k_p / (2 * pi),
-            Constants.TurretConstants.GAINS.k_i / (2 * pi),
-            Constants.TurretConstants.GAINS.k_d / (2 * pi),
+            Constants.TurretConstants.GAINS_TRAVEL.k_p / (2 * pi),
+            Constants.TurretConstants.GAINS_TRAVEL.k_i / (2 * pi),
+            Constants.TurretConstants.GAINS_TRAVEL.k_d / (2 * pi),
         )
 
         self.target_position = 0.0
@@ -211,14 +212,3 @@ class TurretIOSim(TurretIO):
         self.closed_loop = True
         self.target_position = radiansToRotations(position)
         self.controller.setSetpoint(-position)
-
-    def set_velocity(self, velocity: radians_per_second) -> None:
-        """Set the turret velocity in position per second."""
-        self.closed_loop = True
-        if (velocity > 0 and self._motor_position * (
-                2 * pi) >= Constants.TurretConstants.MAX_ROTATIONS):
-            velocity = 0
-        elif velocity < 0 and self._motor_position * (
-                2 * pi) <= 0:
-            velocity = 0
-        self.controller.setSetpoint(-velocity)
