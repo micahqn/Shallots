@@ -1,0 +1,209 @@
+"""
+Structs and IOs for the VisionSubsystem.
+
+Structs are used to simplify logging and reduce logging overhead.
+"""
+from dataclasses import dataclass, field
+from enum import IntEnum
+from math import radians
+from typing import List, Callable
+
+from ntcore import NetworkTableInstance
+from pykit.autolog import autolog
+from wpilib import RobotController, Timer
+from wpimath.geometry import Pose3d, Transform3d, Rotation2d, Rotation3d
+from wpiutil.wpistruct import make_wpistruct
+
+
+class ObservationType(IntEnum):
+    """
+    Types of observations from different cameras.
+
+    MegaTag 1 and 2 comes from Limelight cameras, PhotonVision comes from simulation.
+    """
+    MEGATAG_1 = 1
+    MEGATAG_2 = 2
+    PHOTONVISION = 0
+
+
+@make_wpistruct(name="CameraObservation")
+@autolog
+@dataclass(frozen=True, slots=True)
+class CameraObservation:
+    """Observation struct from cameras."""
+    timestamp: float = 0
+    pose: Pose3d = field(default_factory=Pose3d)
+    ambiguity: float = 0
+    tag_count: int = 0
+    avg_tag_dist: float = 0
+    observation: int = ObservationType.PHOTONVISION
+
+
+# pylint: disable=too-few-public-methods
+class VisionIO:
+    """Base class for VisionIO."""
+
+    @autolog
+    @dataclass(slots=True)
+    class VisionIOInputs:
+        """Inputs for the VisionSubsystem."""
+        name: str = "Unnamed Camera"
+        connected: bool = False
+        observations: List[CameraObservation] = field(default_factory=list)
+        tag_ids: List[int] = field(default_factory=list)
+
+
+    def update_inputs(self, inputs: VisionIOInputs) -> None:
+        """Update subsystem inputs."""
+
+    def set_throttle(self, throttle: int) -> None:
+        """Set the throttle."""
+
+    def get_name(self) -> str:
+        """Returns the name of the camera."""
+
+
+# pylint: disable=too-many-instance-attributes
+class VisionIOLimelight(VisionIO):
+    """VisionIO for Limelight cameras."""
+
+    def __init__(self,
+                 name: str,
+                 transform: Transform3d,
+                 rotation_supplier: Callable[[], Rotation2d]) -> None:
+        super().__init__()
+        self.name = name
+        self.location = transform
+        self.table = NetworkTableInstance.getDefault().getTable(name)
+        self.rotation_supplier = rotation_supplier
+        self.valid_target = self.table.getIntegerTopic("tv").subscribe(0)
+        self.latency = self.table.getDoubleTopic("tl").subscribe(0.0)
+
+        self.megatag1 = self.table.getDoubleArrayTopic("botpose_wpiblue").subscribe([])
+        self.megatag2 = self.table.getDoubleArrayTopic("botpose_orb_wpiblue").subscribe([])
+
+        self.cam_pose_setter = self.table.getDoubleArrayTopic(
+            "camerapose_robotspace_set"
+        ).publish()
+        self.orientation_publisher = self.table.getDoubleArrayTopic(
+            "robot_orientation_set"
+        ).publish()
+        self.throttle_set = self.table.getDoubleTopic("throttle_set").publish()
+
+        self._heartbeat = Timer()
+        self._heartbeat.start()
+
+        self._last_rot = Rotation2d()
+
+    def update_inputs(self, inputs: VisionIO.VisionIOInputs) -> None:
+        """Update subsystem inputs."""
+        inputs.name = self.name
+
+        # We're considered connected if an update has been seen in the last 250ms
+        # (Checked every 5 seconds)
+        if self._heartbeat.get() >= 5:
+            self._heartbeat.reset()
+            latency_ms = (RobotController.getFPGATime() - self.latency.getLastChange()) / 1000
+            inputs.connected = latency_ms < 250
+
+        rot = self.rotation_supplier()
+        self.orientation_publisher.set(
+            [rot.degrees(), 0, 0, 0, 0, 0]
+        )
+
+        tag_ids = []
+        pose_observations = []
+
+        # Update orientation
+        if abs((self._last_rot - rot).degrees()) > 7.2:
+            # If we're rotating over 360 degrees per second,
+            # don't read estimates.
+            inputs.observations = pose_observations
+            inputs.tag_ids = tag_ids
+            self._last_rot = rot
+            return
+
+        self._last_rot = rot
+
+        for sample in self.megatag1.readQueue():
+            val = sample.value
+            length = len(val)
+            if length == 0:
+                continue
+            for i in range(11, length, 7):
+                tag_ids.append(int(val[i]))
+                pose_observations.append(
+                    CameraObservation(
+                        # Timestamp (based on server timestamp of publish and latency)
+                        sample.time * 1e-6 - val[6] * 1e-3,
+
+                        # 3D pose estimate
+                        VisionIOLimelight.parse_pose(val),
+
+                        # Ambiguity
+                        # Using only the first tag because ambiguity isn't applicable for multi tag
+                        val[17] if len(val) >= 18 else 0,
+
+                        # Tag count
+                        int(val[7]),
+
+                        # Average tag distance
+                        val[9],
+
+                        # Observation type
+                        ObservationType.MEGATAG_1
+                    )
+                )
+
+        for sample in self.megatag2.readQueue():
+            val = sample.value
+            length = len(val)
+            if length == 0:
+                continue
+            for i in range(11, length, 7):
+                tag_ids.append(int(val[i]))
+                pose_observations.append(
+                    CameraObservation(
+                        # Timestamp (based on server timestamp of publish and latency)
+                        sample.time * 1e-6 - val[6] * 1e-3,
+
+                        # 3D pose estimate
+                        VisionIOLimelight.parse_pose(val),
+
+                        # Ambiguity (0 because MegaTag 2 is already disambiguated)
+                        0.0,
+
+                        # Tag count
+                        int(val[7]),
+
+                        # Average tag distance
+                        val[9],
+
+                        # Observation type
+                        ObservationType.MEGATAG_2
+                    )
+                )
+
+        inputs.observations = pose_observations
+        inputs.tag_ids = tag_ids
+
+    def set_throttle(self, throttle: int) -> None:
+        """Set the throttle."""
+        self.throttle_set.set(throttle)
+
+    def get_name(self) -> str:
+        return self.name
+
+    @staticmethod
+    def parse_pose(raw_ll_array: list[float]) -> Pose3d:
+        """Translated from Limelight's LimelightHelpers.java"""
+        return Pose3d(
+            raw_ll_array[0],
+            raw_ll_array[1],
+            raw_ll_array[2],
+            Rotation3d(
+                radians(raw_ll_array[3]),
+                radians(raw_ll_array[4]),
+                radians(raw_ll_array[5])
+            )
+        )
