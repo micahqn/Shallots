@@ -7,7 +7,13 @@
         {
           "type": "named",
           "data": {
-            "name": "Aim to Hub"
+            "name": "Default"
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "Rush Center"
           }
         },
         {
@@ -17,16 +23,28 @@
               {
                 "type": "path",
                 "data": {
-                  "pathName": "Circle 1 1"
+                  "pathName": "Plow Center"
                 }
               },
               {
                 "type": "named",
                 "data": {
-                  "name": "Launch"
+                  "name": "Intake"
                 }
               }
             ]
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "Aim to Outpost"
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "Align 2nd Pass"
           }
         },
         {
@@ -42,7 +60,7 @@
               {
                 "type": "path",
                 "data": {
-                  "pathName": "Circle 1 2"
+                  "pathName": "Clear Behind Hub"
                 }
               },
               {
@@ -63,49 +81,32 @@
         {
           "type": "path",
           "data": {
-            "pathName": "Circle 1 3"
+            "pathName": "End Clear To Shoot"
           }
         },
         {
-          "type": "path",
+          "type": "parallel",
           "data": {
-            "pathName": "Circle 1 4"
-          }
-        },
-        {
-          "type": "named",
-          "data": {
-            "name": "Aim to Hub"
+            "commands": [
+              {
+                "type": "path",
+                "data": {
+                  "pathName": "Return To Shoot"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "Aim to Hub"
+                }
+              }
+            ]
           }
         },
         {
           "type": "named",
           "data": {
             "name": "Launch"
-          }
-        },
-        {
-          "type": "wait",
-          "data": {
-            "waitTime": 5.0
-          }
-        },
-        {
-          "type": "named",
-          "data": {
-            "name": "Default"
-          }
-        },
-        {
-          "type": "path",
-          "data": {
-            "pathName": "Circle 1 5"
-          }
-        },
-        {
-          "type": "path",
-          "data": {
-            "pathName": "Circle 1 6"
           }
         }
       ]

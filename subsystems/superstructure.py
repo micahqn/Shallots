@@ -39,6 +39,7 @@ class Superstructure(Subsystem):
         AIMHUB = auto()  # Point turret to hub
         AIMOUTPOST = auto()  # Point turret to the outpost side
         AIMDEPOT = auto()  # Point turret to the depot side
+        STOPLAUNCH = auto()  # Stop the launcher
         # center
 
     # Map each goal to each subsystem state to reduce code complexity
@@ -55,11 +56,11 @@ class Superstructure(Subsystem):
     ]] = {
 
         Goal.DEFAULT: (
-            IntakeSubsystem.SubsystemState.STOP,
+            None,#IntakeSubsystem.SubsystemState.STOP,
             FeederSubsystem.SubsystemState.STOP,
             LauncherSubsystem.SubsystemState.IDLE,
             HoodSubsystem.SubsystemState.STOW,
-            TurretSubsystem.SubsystemState.HUB,
+            None, #TurretSubsystem.SubsystemState.HUB,
             True
         ),
 
@@ -72,8 +73,15 @@ class Superstructure(Subsystem):
         ),
 
         Goal.LAUNCH: (
-            IntakeSubsystem.SubsystemState.INTAKE,
+            None,#IntakeSubsystem.SubsystemState.INTAKE,
             FeederSubsystem.SubsystemState.INWARD,
+            None,
+            None, None, True
+        ),
+
+        Goal.STOPLAUNCH: (
+            None,#IntakeSubsystem.SubsystemState.STOP,
+            FeederSubsystem.SubsystemState.STOP,
             None,
             None, None, True
         ),
@@ -88,16 +96,16 @@ class Superstructure(Subsystem):
 
         Goal.AIMOUTPOST: (
             None, None, 
-            LauncherSubsystem.SubsystemState.PASS,
-            HoodSubsystem.SubsystemState.PASS,
+            LauncherSubsystem.SubsystemState.SCORE,
+            HoodSubsystem.SubsystemState.AIMBOT,
             TurretSubsystem.SubsystemState.OUTPOST,
             True
         ),
 
         Goal.AIMDEPOT: (
             None, None, 
-            LauncherSubsystem.SubsystemState.PASS,
-            HoodSubsystem.SubsystemState.PASS,
+            LauncherSubsystem.SubsystemState.SCORE,
+            HoodSubsystem.SubsystemState.AIMBOT,
             TurretSubsystem.SubsystemState.DEPOT,
             True
         ),
@@ -153,10 +161,12 @@ class Superstructure(Subsystem):
         if DriverStation.isDisabled():
             return
 
-        # Distance-based aiming (LUT) for hub and passing goals
-        aim_goals = (self.Goal.LAUNCH, self.Goal.AIMHUB,
-                     self.Goal.AIMOUTPOST, self.Goal.AIMDEPOT)
-        if (self._goal_state in aim_goals
+        # Update aiming setpoints only when actively aiming (AIMHUB / AIMOUTPOST /
+        # AIMDEPOT). LAUNCH and STOPLAUNCH hold the last aim and do not change
+        # hood/launcher/turret setpoints.
+        aim_update_goals = (self.Goal.AIMHUB, self.Goal.AIMOUTPOST,
+                            self.Goal.AIMDEPOT)
+        if (self._goal_state in aim_update_goals
                 and self._aim_pose_supplier and self._aiming_table):
             real_goal = self._goal_pose_for_state(self._goal_state)
             robot_pose = self._aim_pose_supplier()
@@ -172,7 +182,8 @@ class Superstructure(Subsystem):
                 self.hood.set_aiming_setpoint(settings["hood"])
             if self.launcher is not None:
                 self.launcher.set_aiming_setpoint(settings["rpm"])
-        else:
+        elif self._goal_state not in (self.Goal.LAUNCH, self.Goal.STOPLAUNCH):
+            # Not aiming and not holding launch: clear setpoints (e.g. DEFAULT, INTAKE)
             if self.turret is not None:
                 self.turret.set_target_field_angle(None)
             if self.hood is not None:
@@ -286,7 +297,7 @@ class Superstructure(Subsystem):
 
         if not launcher_state is None:
             self.launcher.set_desired_state(launcher_state)
-
+        
         if not hood_state is None:
             self.hood.set_desired_state(hood_state)
 
