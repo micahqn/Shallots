@@ -18,6 +18,33 @@ class Robot(Enum):
     COMP = auto()   # Competition robot
     UNKNOWN = auto()  # Fallback if detection fails
 
+def has_subsystem(subsystem_name: str) -> bool:
+    """
+    Check if a subsystem is available on the current robot.
+
+    :param subsystem_name: Name of the subsystem (e.g., "climber", "intake")
+    :return: True if the subsystem exists on the current robot, False otherwise
+    """
+
+    # Add/remove subsystems as needed
+    LARRY_SUBSYSTEMS = {
+        "drivetrain",
+        "vision",
+    }
+
+    COMP_SUBSYSTEMS = {
+        "drivetrain",
+        "vision",
+        "intake",
+        "pivot",
+        "launcher",
+    }
+    
+
+    if currentRobot == Robot.COMP:
+        return subsystem_name.lower() in COMP_SUBSYSTEMS
+    else:  # LARRY or UNKNOWN defaults to LARRY
+        return subsystem_name.lower() in LARRY_SUBSYSTEMS
 
 def get_mac_address():
     # Get the MAC address as a 48-bit integer
@@ -39,12 +66,14 @@ def detect_robot() -> Robot:
     :return: The detected robot
     """
     print("Attempting to detect which robot we are connected to")
+
     # Method 1: Check MAC address (RoboRIO MAC addresses are unique)
     try:
         mac_address = get_mac_address() or "Undefined"
         Logger.recordMetadata("MACAddress", mac_address)
-        # Replace these with your actual MAC addresses
+        
         # You can find MAC addresses via: ssh admin@roborio-XXXX-frc.local "cat /sys/class/net/eth0/address"
+
         LARRY_MAC_ADDRESSES = [
             "00:08:f2:33:f9:d1",  # Replace with Larry's actual MAC
             # Add other possible MAC addresses for Larry if it has multiple interfaces
@@ -57,9 +86,11 @@ def detect_robot() -> Robot:
         if mac_address in LARRY_MAC_ADDRESSES:
             print("Mac address is for Larry")
             return Robot.LARRY
+        
         if mac_address in COMP_MAC_ADDRESSES:
             print("Mac address is for Dwayne.")
             return Robot.COMP
+        
     except Exception:
         pass
 
@@ -70,11 +101,13 @@ def detect_robot() -> Robot:
             return Robot.LARRY
         if "comp" in hostname or "competition" in hostname:
             return Robot.COMP
+        
     except Exception:
         pass
 
     # Method 3: Check environment variable (useful for testing)
     import os
+
     robot_name = os.environ.get("ROBOT_NAME", "").upper()
     if robot_name == "LARRY":
         return Robot.LARRY
@@ -82,47 +115,8 @@ def detect_robot() -> Robot:
         return Robot.COMP
 
     # Fallback: Default to COMP for competition, or set to LARRY for testing
-    # Change this default based on your preference
-    return Robot.COMP  # or Robot.LARRY if you want to default to test robot
+    return Robot.LARRY
 
 
 # Detect robot at module load time
 currentRobot: Final[Robot] = detect_robot()
-
-
-def has_subsystem(subsystem_name: str) -> bool:
-    """
-    Check if a subsystem is available on the current robot.
-
-    :param subsystem_name: Name of the subsystem (e.g., "climber", "intake")
-    :return: True if the subsystem exists on the current robot, False otherwise
-    """
-    # Define which subsystems exist on each robot
-    # Add/remove subsystems as needed
-    LARRY_SUBSYSTEMS = {
-        "drivetrain",  # Always present
-        "vision",      # Always present
-        #"hood",
-        #"turret",
-        # Add subsystems that Larry has:
-        # "climber",
-        # "intake",
-    }
-
-    COMP_SUBSYSTEMS = {
-        "drivetrain",  # Always present
-        "vision",      # Always present
-        "intake",      # Competition robot has intake
-        "feeder",      # Competition robot has feeder
-        "launcher",    # Competition robot has launcher
-        "hood",        # Competition robot has hood
-        "turret",      # Competition robot has turret
-        #"climber",     # Competition robot has climber
-        # Add other Comp subsystems as needed
-    }
-    
-
-    if currentRobot == Robot.COMP:
-        return subsystem_name.lower() in COMP_SUBSYSTEMS
-    else:  # LARRY or UNKNOWN defaults to LARRY
-        return subsystem_name.lower() in LARRY_SUBSYSTEMS
